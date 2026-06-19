@@ -4,7 +4,7 @@ using System.Text.Json;
 
 static class JWKSEndpoint
 {
-    public static void Setup(WebApplication app, RsaSecurityKey publicKey, JsonSerializerOptions jsonOptions)
+    public static void Map(WebApplication app, RsaSecurityKey publicKey, JsonSerializerOptions jsonOptions)
     {
         app.MapGet("/jwks", () =>
         {

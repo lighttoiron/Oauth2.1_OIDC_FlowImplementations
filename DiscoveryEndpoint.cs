@@ -3,7 +3,7 @@ using System.Text.Json;
 
 static class DiscoveryEndpoint
 {
-    public static void Setup(WebApplication app, string Issuer, JsonSerializerOptions jsonOptions)
+    public static void Map(WebApplication app, string Issuer, JsonSerializerOptions jsonOptions)
     {
         app.MapGet("/.well-known/openid-configuration", () =>
         {

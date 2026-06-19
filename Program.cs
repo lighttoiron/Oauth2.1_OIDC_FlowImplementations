@@ -11,6 +11,11 @@ builder.Services.AddHttpLogging(logging =>
 });
 //
 
+// Register our cleanup service to remove old pending auth requests that were never fulfilled
+// AddHostedService will automatically call PendingRequestCleanupService.ExecuteAsync, no need to call it yourself
+builder.Services.AddHostedService<PendingRequestCleanupService>();
+//
+
 var app = builder.Build();
 
 // Generate public and private keys (RSA key pair)
@@ -42,16 +47,16 @@ app.UseHttpLogging();
 const string Issuer = "https://localhost:7051";
 
 // Add the jwks (JSON Web Key Set) endpoint, which provides public keys to the client so they can verify the signatures of the JWTs issued by this auth server.
-JWKSEndpoint.Setup(app, publicKey, jsonOptions);
+JWKSEndpoint.Map(app, publicKey, jsonOptions);
 //
 
 // Add the Discovery endpoint, which provides info about the auth server to the clients.
-DiscoveryEndpoint.Setup(app, Issuer, jsonOptions);
+DiscoveryEndpoint.Map(app, Issuer, jsonOptions);
 //
 
 // Add the /authorization endpoint
-//  https://localhost:7051/authorize?response_type=code&client_id=test-client&redirect_uri=https://localhost:3000/callback&scope=openid&state=abc123&code_challenge=abc&code_challenge_method=S256
-AuthorizeEndpoint.Setup(app, Issuer);
+//  https://localhost:7051/authorize?response_type=code&client_id=test-client&redirect_uri=https://localhost:7051/callback&scope=openid&state=abc123&code_challenge=abc&code_challenge_method=S256
+AuthorizeEndpoint.Map(app, Issuer);
 //
 
 
