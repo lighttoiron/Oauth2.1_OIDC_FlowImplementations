@@ -21,7 +21,7 @@ static class AuthorizeEndpoint
     // Holds the code data for authorization codes, string is the auth code itself.  When someone sends the auth code, we can look up the data directly for that code.
     public static readonly ConcurrentDictionary<string, AuthorizationCodeData> AuthCodes = new();
 
-    public static void Map(WebApplication app, string issuer)
+    public static void Map(WebApplication app)
     {
         // Set up the GET route
         app.MapGet("/authorize", (HttpContext context,
@@ -42,37 +42,37 @@ static class AuthorizeEndpoint
 
             if (response_type != "code")
             {
-                return Results.BadRequest("Invalid or missing response_type.  Only 'code' is supported.");
+                return Results.BadRequest(new { error = "invalid_request", error_message = "Invalid or missing response_type.  Only 'code' is supported." });
             }
 
             if (string.IsNullOrEmpty(client_id))
             {
-                return Results.BadRequest("Missing client_id.");
+                return Results.BadRequest(new { error = "invalid_request", error_message = "Missing client_id." });
             }
 
             if (string.IsNullOrEmpty(redirect_uri))
             {
-                return Results.BadRequest("Missing redirect_uri.");
+                return Results.BadRequest(new { error = "invalid_request", error_message = "Missing redirect_uri." });
             }
 
             if (string.IsNullOrEmpty(scope) || !scope.Split(' ').Contains("openid")) // Coudl contain other valid scope types as well, just need to ensure one scope to work with at least
             {
-                return Results.BadRequest("Missing or invalid scope. 'openid' scope is required.");
+                return Results.BadRequest(new { error = "invalid_request", error_message = "Missing or invalid scope. 'openid' scope is required." });
             }
 
             if (string.IsNullOrEmpty(state))
             {
-                return Results.BadRequest("Missing state.");
+                return Results.BadRequest(new { error = "invalid_request", error_message = "Missing state."});
             }
 
             if (string.IsNullOrEmpty(code_challenge))
             {
-                return Results.BadRequest("Missing code_challenge (PKCE).");
+                return Results.BadRequest(new { error = "invalid_request", error_message = "Missing code_challenge (PKCE)." });
             }
 
             if (code_challenge_method != "S256")
             {
-                return Results.BadRequest("Invalid or missing code_challenge_method.  Only 'S256' is supported.");
+                return Results.BadRequest(new { error = "invalid_request", error_message = "Invalid or missing code_challenge_method.  Only 'S256' is supported." });
             }
 
             // Request is validated, store the user info
@@ -155,7 +155,7 @@ static class AuthorizeEndpoint
                 {
                     Console.WriteLine($"{kvp.Value}");
                 }
-                return Results.BadRequest("Unknown or expired login request - requestId not found.");
+                return Results.BadRequest(new { error = "invalid_grant", error_message = "Unknown or expired login request - requestId not found." });
             }
 
             // Verify that the username matches a stored password for that username
@@ -183,7 +183,7 @@ static class AuthorizeEndpoint
                 Scope: pending.Scope,
                 Nonce: pending.Nonce,
                 Subject: username, // used by the token endpoint to know which sub claim to put in the issued tokens
-                ExpiresAt: DateTime.UtcNow.AddSeconds(60)
+                ExpiresAt: DateTime.UtcNow.AddSeconds(60) // not compared, but we can use this to remove this from our ConcurrentDictionary after a minute of inactivity so we don't get memory leaks if our requiestID is never requested
             );
 
             // Redirect back to the client with the code and the original state value.

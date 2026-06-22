@@ -1,12 +1,15 @@
 using System;
 using System.Text.Json;
+using Microsoft.Extensions.Options;
 
 static class DiscoveryEndpoint
 {
-    public static void Map(WebApplication app, string Issuer, JsonSerializerOptions jsonOptions)
+    public static void Map(WebApplication app, JsonSerializerOptions jsonOptions)
     {
-        app.MapGet("/.well-known/openid-configuration", () =>
+        app.MapGet("/.well-known/openid-configuration", (IOptions<AuthServerOptions> options) =>
         {
+            var Issuer = options.Value.Issuer;
+            
             var doc = new
             {
                 issuer = Issuer, // The canonical URL / identity of the auth server.  This is embedded in the tokens provided and is used by clients to verify that the tokens come from a known issuer
