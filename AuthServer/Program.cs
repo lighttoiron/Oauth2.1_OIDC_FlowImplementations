@@ -51,7 +51,9 @@ DiscoveryEndpoint.Map(app, jsonOptions);
 //
 
 // Add the /authorization endpoint
-//  https://localhost:7051/authorize?response_type=code&client_id=test-client&redirect_uri=https://localhost:7051/callback&scope=openid&state=abc123&code_challenge=abc&code_challenge_method=S256
+// code challenge: OlOX4IXptyHZUkSTk6172xG458ilF9cjTPd0VQmt6AU
+// code verifier: qkYt3EBDENHoW2kARGqN3AcpcfDCszKieYoXhQoTplA
+//  https://localhost:7051/authorize?response_type=code&client_id=test-client&redirect_uri=https://localhost:7051/callback&scope=openid&state=abc123&code_challenge=OlOX4IXptyHZUkSTk6172xG458ilF9cjTPd0VQmt6AU&code_challenge_method=S256
 AuthorizeEndpoint.Map(app);
 //
 
