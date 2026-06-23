@@ -8,19 +8,6 @@ using System.Collections.Concurrent; // Thread-safe collections
 
 static class AuthorizeEndpoint
 {
-    // Create a dictoinary of usernames and passwords for testing.  In production, you would use a proper user store with hashed passwords, like a database or an identity management system.
-    public static readonly Dictionary<string, string> Users = new Dictionary<string, string>
-    {
-            { "user1", "password1" },
-            { "user2", "password2" }
-    };
-
-    // Holds the validated OAuth parameters between the GET (login page) and POST (credential submission) so the POST can access them
-    public static readonly ConcurrentDictionary<string, PendingAuthRequest> PendingRequests = new();
-
-    // Holds the code data for authorization codes, string is the auth code itself.  When someone sends the auth code, we can look up the data directly for that code.
-    public static readonly ConcurrentDictionary<string, AuthorizationCodeData> AuthCodes = new();
-
     public static void Map(WebApplication app)
     {
         // Set up the GET route
@@ -77,7 +64,7 @@ static class AuthorizeEndpoint
 
             // Request is validated, store the user info
             string requestId = Guid.NewGuid().ToString();
-            PendingRequests[requestId] = new PendingAuthRequest(
+            AuthStore.PendingRequests[requestId] = new PendingAuthRequest(
                 ClientId: client_id,
                 RedirectUri: redirect_uri,
                 State: state,
@@ -148,10 +135,10 @@ static class AuthorizeEndpoint
             var password = form["password"].ToString();
 
             // Verify that we have a pending request for the given requestId
-            if (!PendingRequests.TryRemove(requestId, out var pending))
+            if (!AuthStore.PendingRequests.TryRemove(requestId, out var pending))
             {
                 Console.WriteLine($"RequestId: {requestId}");
-                foreach (var kvp in PendingRequests)
+                foreach (var kvp in AuthStore.PendingRequests)
                 {
                     Console.WriteLine($"{kvp.Value}");
                 }
@@ -159,7 +146,7 @@ static class AuthorizeEndpoint
             }
 
             // Verify that the username matches a stored password for that username
-            if (!Users.TryGetValue(username, out var expectedPassword) || password != expectedPassword)
+            if (!AuthStore.Users.TryGetValue(username, out var expectedPassword) || password != expectedPassword)
             {
                 return Results.Content("<h2>Invalid username or password</h2>", "text/html");
             }
@@ -176,7 +163,7 @@ static class AuthorizeEndpoint
 
             // Store what the /token endpoint will need to validate this code later
             // Codes expire fast, typically 60 seconds is enough time for the redirect round trip since no user interaction is needed
-            AuthCodes[code] = new AuthorizationCodeData(
+            AuthStore.AuthCodes[code] = new AuthorizationCodeData(
                 ClientId: pending.ClientId,
                 RedirectUri: pending.RedirectUri,
                 CodeChallenge: pending.CodeChallenge,

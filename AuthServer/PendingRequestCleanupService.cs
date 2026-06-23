@@ -16,21 +16,21 @@ public class PendingRequestCleanupService : BackgroundService
         {
             var now = DateTime.UtcNow;
 
-            foreach (var kvp in AuthorizeEndpoint.PendingRequests)
+            foreach (var kvp in AuthStore.PendingRequests)
             {
                 if (kvp.Value.ExpiresAt < now)
                 {
                     Console.WriteLine($"~~~~~~~~Removing {kvp.Value}");
-                    AuthorizeEndpoint.PendingRequests.TryRemove(kvp.Key, out _); // use _ because we do not actually need the param later
+                    AuthStore.PendingRequests.TryRemove(kvp.Key, out _); // use _ because we do not actually need the param later
                 }
             }
 
-            foreach (var kvp in AuthorizeEndpoint.AuthCodes)
+            foreach (var kvp in AuthStore.AuthCodes)
             {
                 if (kvp.Value.ExpiresAt < now)
                 {
                     Console.WriteLine($"~~~~~~~~~~~~~~Removing {kvp.Value}");
-                    AuthorizeEndpoint.AuthCodes.TryRemove(kvp.Key, out _);                
+                    AuthStore.AuthCodes.TryRemove(kvp.Key, out _);                
                 }
             }
         }

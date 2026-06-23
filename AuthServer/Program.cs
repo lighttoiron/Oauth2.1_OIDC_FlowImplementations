@@ -55,5 +55,9 @@ DiscoveryEndpoint.Map(app, jsonOptions);
 AuthorizeEndpoint.Map(app);
 //
 
+// Add the /token endpoint
+TokenEndpoint.Map(app);
+//
+
 
 app.Run();

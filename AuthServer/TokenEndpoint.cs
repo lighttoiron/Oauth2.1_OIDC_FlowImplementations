@@ -7,15 +7,13 @@ using Microsoft.Extensions.Options;
 // The token endpoint is used to exhange the client's authorization code for valid tokens, ID tokens, access tokens, etc.
 static class TokenEndpoint
 {
-    public static void Map(WebApplication app, string Issuer)
+    public static void Map(WebApplication app)
     {
         app.MapPost("/token", async (
             HttpContext context,
             ISigningKeyProvider keys,
             IOptions<AuthServerOptions> options ) =>
         {
-            var ApiAudience = options.Value.ApiAudience;
-            
             if (!context.Request.HasFormContentType)
             {
                 return Results.BadRequest(new { error = "invalid_request", error_message = "Expected form-encoded body." });
@@ -23,7 +21,7 @@ static class TokenEndpoint
 
             // read the content of the form we received
             var form = await context.Request.ReadFormAsync();
-
+            
             // Extract the information we need to validate the request from the form
             var grantType = form["grant_type"].ToString();
             var code = form["code"].ToString();
@@ -44,7 +42,7 @@ static class TokenEndpoint
 
             // The auth code is single use, pull it out of our ConcurrentDictionary regardless of whether or not it is valid
             // Further attempts to use the code should always fail.
-            if (!AuthorizeEndpoint.AuthCodes.TryRemove(code, out var authCodeData))
+            if (!AuthStore.AuthCodes.TryRemove(code, out var authCodeData))
             {
                 return Results.BadRequest(new { error = "invalid_grant", error_message = "Invalid auth code.  Code is either unknown, already used, or expired." } );
             }
@@ -77,6 +75,7 @@ static class TokenEndpoint
             var tokenHandler = new JwtSecurityTokenHandler();
             // Note: usually this would be handled in a secure key store like Azure Key Vault, not done in the server backend where we should never store the private key
             var signingCredentials = new SigningCredentials(keys.PrivateKey, SecurityAlgorithms.RsaSha256);
+            var ApiAudience = options.Value.ApiAudience;
 
             var now = DateTime.UtcNow;
             var accessTokenExpiry = now.AddMinutes(15); // Access token will be valid for 15 minutes
@@ -94,7 +93,7 @@ static class TokenEndpoint
 
             var accessToken = tokenHandler.CreateEncodedJwt(new SecurityTokenDescriptor
             {
-                Issuer = Issuer,
+                Issuer = options.Value.Issuer,
                 Audience = ApiAudience, // token is for the API audience
                 Subject = new ClaimsIdentity(accessTokenClaims),
                 IssuedAt = now,
@@ -117,7 +116,7 @@ static class TokenEndpoint
 
             var idToken = tokenHandler.CreateEncodedJwt(new SecurityTokenDescriptor
             {
-                Issuer = Issuer,
+                Issuer = options.Value.Issuer,
                 Audience = authCodeData.ClientId, // Client Id here, not API
                 Subject = new ClaimsIdentity(idTokenClaims),
                 IssuedAt = now,
