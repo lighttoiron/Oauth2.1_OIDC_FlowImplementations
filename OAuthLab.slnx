@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="AuthServer/AuthServer.csproj" />
+  <Project Path="Client/Client.csproj" />
   <Project Path="ResourceApi/ResourceApi.csproj" />
 </Solution>

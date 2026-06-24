@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Oauth Lab Client</title>
+</head>
+<body>
+    <h1>Oauth Lab Client</h1>
+    <div id="content">Loading...</div>
+
+    <script>
+        const AUTH_SERVER = "https://localhost:7051";
+        const CLIENT_ID = "test-client";
+        const REDIRECT_URI = "http://localhost:5172";
+
+        // Takes a buffer of bytes, replaces reserved URI characters, then 
+        function base64url(buffer) {
+            return btoa(String.fromCharCode(...new Uint8Array(buffer)))
+                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/,'');
+        }
+
+        async function startLogin() {
+            // Generate the PKCE pair
+            const verifierBytes = crypto.getRandomValues(new Uint8Array(32));
+            const codeVerifier = base64url(verifierBytes);
+
+            const challengeBytes = await crypto.subtle.digest(
+                'SHA-256', new TextEncoder().encode(codeVerifier));
+            const codeChallenge = base64url(challengeBytes);
+
+            const state = base64url(crypto.getRandomValues(new Uint8Array(16)));
+
+            // The verifier and state need to survive when the page navigates away from the current page to the authorization endpoint.
+            // we use sessionStorage to save them (sessionStorage clears when the tab closes, unlike localStorage)
+            sessionStorage.setItem('pkce_verifier', codeVerifier);
+            sessionStorage.setItem('oauth_state', state);
+
+            const params = new URLSearchParams({
+                response_type: 'code',
+                client_id: CLIENT_ID,
+                redirect_uri: REDIRECT_URI,
+                scope: 'openid',
+                state: state,
+                code_challenge: codeChallenge,
+                code_challenge_method: 'S256'
+            });
+
+            window.location.href = `${AUTH_SERVER}/authorize?${params}`;
+        }
+
+        function handleCallback(code, state) {
+            const expectedState = sessionStorage.getItem('oauth_state');
+
+            if (state != expectedState) {
+                document.getElementById('content').textContent =
+                    'State mismatch - possible CSRF attack. Aborting page load.';
+                return;
+            }
+
+            document.getElementById('content').innerHTML = `
+                <p>Got Authorization Code Successfully.</p>
+                <code>${code}</code>
+                <p>State verified.  Ready to exchange for tokens.</p>
+                `;
+        }
+
+        // On page load, we need to check if this is an initial page load or a redirect back from the authorization endpoint
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const state = urlParams.get('state');
+
+        if (code) {
+            // We are returning from a call to the /authorize endpoint
+            handleCallback(code, state);
+        } else {
+            document.getElementById('content').innerHTML = `
+                <button onclick="startLogin()">Sign In</button>
+            `;
+        }
+    </script>
+</body>
+</html>
