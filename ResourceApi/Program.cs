@@ -14,6 +14,17 @@ builder.Services.AddHttpLogging(logging =>
 });
 //
 
+// Add CORS to allow our client app to call this endpoint
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("ClientApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:5172")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 // Get the ApiOptions from appsettings.json
 // ! here indicates to the compiler that we guarantee this value isn't null, so don't show warnings
 var apiOptions = builder.Configuration.GetSection("ResourceApi").Get<ResourceApiOptions>()!;
@@ -58,6 +69,12 @@ var app = builder.Build();
 
 // Add logging for improved debugging locally
 app.UseHttpLogging();
+
+// CORS must come before UseAuthentication and UseAuthorization
+// This is because when a message with a custom header (like Authorization: Bearer ...) is sent over CORS,
+//  an OPTIONS preflight call is made first, without that header.  If we reject the OPTIONS call since it can't be authenticated,
+//  our client will be unable to call this API
+app.UseCors("ClientApp");
 
 // NOTE:: IMPORTANT: app.UseAuthentication() must be called BEFORE app.UseAuthorization() or auth requests will fail.
 // This is because the middleware pipeline is an ordered chain, and all app.Use...() calls will be effectuated in order

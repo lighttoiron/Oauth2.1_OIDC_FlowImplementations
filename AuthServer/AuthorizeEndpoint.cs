@@ -4,7 +4,7 @@ using System.Collections.Concurrent; // Thread-safe collections
 
 
 // Test this endpoint with the following string to pass the required info in the query params
-//  https://localhost:7051/authorize?response_type=code&client_id=test-client&redirect_uri=https://localhost:7051/callback&scope=openid&state=abc123&code_challenge=abc&code_challenge_method=S256
+//  https://localhost:7051/authorize?response_type=code&client_id=test-client&redirect_uri=http://localhost:5172/callback&scope=openid&state=abc123&code_challenge=abc&code_challenge_method=S256
 
 static class AuthorizeEndpoint
 {

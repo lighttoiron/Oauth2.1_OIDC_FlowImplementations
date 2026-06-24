@@ -14,6 +14,19 @@ builder.Services.AddHttpLogging(logging =>
 });
 //
 
+// Add CORS policy to allow cross origin requests from our client JS
+// This needs to be configured for each other origin that we want to allow to call this endpoint
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("ClientApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:5172")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+//
+
 // Register our cleanup service to remove old pending auth requests that were never fulfilled
 // AddHostedService will automatically call PendingRequestCleanupService.ExecuteAsync, no need to call it yourself
 builder.Services.AddHostedService<PendingRequestCleanupService>();
@@ -38,9 +51,14 @@ var jsonOptions = new JsonSerializerOptions
 };
 //
 
+// Use CORS to allow the client app to call this endpoint
+app.UseCors("ClientApp");
+//
+
 // Add the Http logging into the middleware pipeline
 app.UseHttpLogging();
 //
+
 
 // Add the jwks (JSON Web Key Set) endpoint, which provides public keys to the client so they can verify the signatures of the JWTs issued by this auth server.
 JWKSEndpoint.Map(app, jsonOptions);
