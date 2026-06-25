@@ -20,7 +20,6 @@ public class PendingRequestCleanupService : BackgroundService
             {
                 if (kvp.Value.ExpiresAt < now)
                 {
-                    Console.WriteLine($"~~~~~~~~Removing {kvp.Value}");
                     AuthStore.PendingRequests.TryRemove(kvp.Key, out _); // use _ because we do not actually need the param later
                 }
             }
@@ -29,8 +28,15 @@ public class PendingRequestCleanupService : BackgroundService
             {
                 if (kvp.Value.ExpiresAt < now)
                 {
-                    Console.WriteLine($"~~~~~~~~~~~~~~Removing {kvp.Value}");
                     AuthStore.AuthCodes.TryRemove(kvp.Key, out _);                
+                }
+            }
+
+            foreach(var kvp in AuthStore.RefreshTokens)
+            {
+                if (kvp.Value.ExpiresAt < now)
+                {
+                    AuthStore.RefreshTokens.TryRemove(kvp.Key, out _);
                 }
             }
         }

@@ -43,7 +43,7 @@
                 response_type: 'code',
                 client_id: CLIENT_ID,
                 redirect_uri: redirectUri,
-                scope: 'openid',
+                scope: 'openid offline_access',
                 state: state,
                 code_challenge: codeChallenge,
                 code_challenge_method: 'S256'
@@ -139,19 +139,27 @@
     
             // Stash the access token in session storage for the API call later.
             sessionStorage.setItem('access_token', tokens.access_token);
+
+            // If we received a refresh token, store it in session storage
+            // This could be somewhere more permanent for a long lived native app or similar
+            if (tokens.refresh_token)
+            {
+                sessionStorage.setItem('refresh_token', tokens.refresh_token);
+            }
     
             // Remove our authorization state and pkce verifier, they are one time use
             sessionStorage.removeItem('oauth_state');
             sessionStorage.removeItem('pkce_verifier');
             sessionStorage.removeItem('oauth_redirect_uri');
     
-            // Strip the ?code=...&stete=... from the address bar on page refresh.  We don't want them stored in browser history
+            // Strip the ?code=...&state=... from the address bar on page refresh.  We don't want them stored in browser history
             // That will prevent a page refresh from trying to replay an anready-consumed authorization code and state
             window.history.replaceState({}, document.title, REDIRECT_URI);
     
             document.getElementById('content').innerHTML = `
                 <p>Signed In Successfully.</p>
                 <button onclick="callProtectedApi()">Call Protected API</button>
+                <button onclick="refreshAccessToken()">Refresh Access Token</button>
                 <pre id="api-result"></pre>
                 `;
         }
@@ -172,6 +180,31 @@
                 <button onclick="startLoginRedirect()">Sign In Via Redirect</button>
                 <button onclick="signInWithPopup()">Sign In Via Popup Window</button>
             `;
+        }
+
+        async function refreshAccessToken() {
+            const refreshToken = sessionStorage.getItem('refresh_token');
+
+            const response = await fetch(`${AUTH_SERVER}/token`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    grant_type: "refresh_token",
+                    refresh_token: refreshToken,
+                    client_Id: CLIENT_ID
+                })
+            });
+
+            if (!response.ok) {
+                document.getElementById('content').textContent =
+                    `Refresh Failed: ${await response.text}`;
+                return;
+            }
+            
+            const tokens = await response.json();
+            sessionStorage.setItem('access_token', tokens.access_token);
+            sessionStorage.setItem('refresh_token', tokens.refresh_token);
+            document.getElementById('api-result').textContent = 'Token refreshed successfully.';
         }
 
         window.addEventListener('DOMContentLoaded', () => {

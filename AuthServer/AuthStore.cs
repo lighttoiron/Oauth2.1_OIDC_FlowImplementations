@@ -16,4 +16,7 @@ static class AuthStore
 
     // Holds the code data for authorization codes, string is the auth code itself.  When someone sends the auth code, we can look up the data directly for that code.
     public static readonly ConcurrentDictionary<string, AuthorizationCodeData> AuthCodes = new();
+
+    // Holds our currently active refresh tokens and their info
+    public static readonly ConcurrentDictionary<string, RefreshTokenData> RefreshTokens = new();
 }
