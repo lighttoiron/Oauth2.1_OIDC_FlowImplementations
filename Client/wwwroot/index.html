@@ -1,224 +1,28 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <title>Oauth Lab Client</title>
-</head>
+<head><title>Oauth Lab Client with BFF</title></head>
 <body>
-    <h1>Oauth Lab Client</h1>
+    <h1>Oauth Lab Client with BFF</h1>
     <div id="content">Loading...</div>
 
     <script>
-        const AUTH_SERVER = "https://localhost:7051";
-        const RESOURCE_API = "https://localhost:7232";
-        const CLIENT_ID = "test-client";
-        const REDIRECT_URI = "http://localhost:5172";
-        const POPUP_REDIRECT_URI = "http://localhost:5172/signin-callback-popup.html";
+        async function checkSession() {
+            const response = await fetch('/bff/me');
+            const data = await response.json();
 
-        // Takes a buffer of bytes, replaces reserved URI characters, then 
-        function base64url(buffer) {
-            return btoa(String.fromCharCode(...new Uint8Array(buffer)))
-                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/,'');
-        }
+            document.getElementById('content').innerHTML = data.authenticated
+                ? `<p>Signed in as <strong>${data.subject}</strong>.</p>
+                   <button onclick="callProtectedApi()">Call Protected API</button>
+                   <pre id="api-result"></pre>`
+                : `<a href="/bff/login"><button>Sign In</button></a>`;
 
-        // Generates our PKCE and state values, stores info we'll need when calling the /token endpoint
-        // Returns the /authorize URL to send direct the page to (either redirect main page or popup)
-        async function prepareAuthRequest(redirectUri) {
-            // Generate the PKCE pair
-            const verifierBytes = crypto.getRandomValues(new Uint8Array(32));
-            const codeVerifier = base64url(verifierBytes);
-
-            const challengeBytes = await crypto.subtle.digest(
-                'SHA-256', new TextEncoder().encode(codeVerifier));
-            const codeChallenge = base64url(challengeBytes);
-
-            const state = base64url(crypto.getRandomValues(new Uint8Array(16)));
-
-            // The verifier and state need to survive when the page navigates away from the current page to the authorization endpoint.
-            // we use sessionStorage to save them (sessionStorage clears when the tab closes, unlike localStorage)
-            sessionStorage.setItem('pkce_verifier', codeVerifier);
-            sessionStorage.setItem('oauth_state', state);
-            sessionStorage.setItem('oauth_redirect_uri', redirectUri);
-
-            const params = new URLSearchParams({
-                response_type: 'code',
-                client_id: CLIENT_ID,
-                redirect_uri: redirectUri,
-                scope: 'openid offline_access',
-                state: state,
-                code_challenge: codeChallenge,
-                code_challenge_method: 'S256'
-            });
-
-            return `${AUTH_SERVER}/authorize?${params}`;
-        }
-
-        async function startLoginRedirect() {
-            window.location.href = await prepareAuthRequest(REDIRECT_URI);
-        }
-
-        async function signInWithPopup() {
-            // Open synchronously before any await call so that browsers associate this window popup with a real user click
-            const popup = window.open('about:blank', 'oauth_popup', 'width=500,height=650');
-
-            // If the popup window was blocked, use the standard redirect flow
-            if (!popup) {
-                await startLoginRedirect();
-                return;
-            }
-
-            try {
-                popup.location.href = await prepareAuthRequest(POPUP_REDIRECT_URI);
-
-                const result = await waitForPopupResult(popup);
-
-                if (result.error) {
-                    document.getElementById('content').textContent = `Login via popup failed: ${result.error}`;
-                    return;
-                }
-
-                await exchangeCodeForTokens(result.code, result.state);
-            } catch (err) {
-                document.getElementById('content').textContent = `Login cancelled: ${err.message}`;
-            }
-        }
-
-        function waitForPopupResult(popup) {
-            return new Promise((resolve, reject) => {
-                const channel = new BroadcastChannel('oauth_callback');
-
-                function cleanup() {
-                    channel.close();
-                    clearInterval(closeCheckInterval);
-                }
-
-                channel.onmessage = (event) => {
-                    cleanup();
-                    resolve(event.data);
-                }
-
-                const closeCheckInterval = setInterval(() => {
-                    if (popup.closed) {
-                        cleanup();
-                        reject(new Error('Popup closed before login completed.'));
-                    }
-                }, 500);
-            });
-        }
-
-        async function exchangeCodeForTokens(code, state) {
-            const expectedState = sessionStorage.getItem('oauth_state');
-    
-            if (state != expectedState) {
-                document.getElementById('content').textContent =
-                    `State mismatch - possible CSRF attack. Aborting page load. ${state}  ${expectedState}`;
-                return;
-            }
-    
-            const codeVerifier = sessionStorage.getItem('pkce_verifier');
-            const redirectUriUsed = sessionStorage.getItem('oauth_redirect_uri');
-    
-            const tokenResponse = await fetch(`${AUTH_SERVER}/token`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({
-                    grant_type: 'authorization_code',
-                    code: code,
-                    redirect_uri: redirectUriUsed,
-                    client_id: CLIENT_ID,
-                    code_verifier: codeVerifier
-                })
-            });
-    
-            if (!tokenResponse.ok) {
-                document.getElementById('content').textContent =
-                    `Token exchange failed ${await tokenResponse.text()}`;
-                    return;
-            }
-    
-            const tokens = await tokenResponse.json();
-    
-            // Stash the access token in session storage for the API call later.
-            sessionStorage.setItem('access_token', tokens.access_token);
-
-            // If we received a refresh token, store it in session storage
-            // This could be somewhere more permanent for a long lived native app or similar
-            if (tokens.refresh_token)
-            {
-                sessionStorage.setItem('refresh_token', tokens.refresh_token);
-            }
-    
-            // Remove our authorization state and pkce verifier, they are one time use
-            sessionStorage.removeItem('oauth_state');
-            sessionStorage.removeItem('pkce_verifier');
-            sessionStorage.removeItem('oauth_redirect_uri');
-    
-            // Strip the ?code=...&state=... from the address bar on page refresh.  We don't want them stored in browser history
-            // That will prevent a page refresh from trying to replay an anready-consumed authorization code and state
-            window.history.replaceState({}, document.title, REDIRECT_URI);
-    
-            document.getElementById('content').innerHTML = `
-                <p>Signed In Successfully.</p>
-                <button onclick="callProtectedApi()">Call Protected API</button>
-                <button onclick="refreshAccessToken()">Refresh Access Token</button>
-                <pre id="api-result"></pre>
-                `;
         }
 
         async function callProtectedApi() {
-            const accessToken = sessionStorage.getItem('access_token');
-
-            const response = await fetch(`${RESOURCE_API}/protected`, {
-                headers: { 'Authorization': `Bearer ${accessToken}` }
-            });
-
-            const data = await response.json();
-            document.getElementById('api-result').textContent = JSON.stringify(data, null, 2);
+            const response = await fetch('/bff/protected');
+            document.getElementById('api-result').textContent =
+                JSON.stringify(await response.json(), null, 2);
         }
-
-        function showSignInOptions() {
-            document.getElementById('content').innerHTML = `
-                <button onclick="startLoginRedirect()">Sign In Via Redirect</button>
-                <button onclick="signInWithPopup()">Sign In Via Popup Window</button>
-            `;
-        }
-
-        async function refreshAccessToken() {
-            const refreshToken = sessionStorage.getItem('refresh_token');
-
-            const response = await fetch(`${AUTH_SERVER}/token`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({
-                    grant_type: "refresh_token",
-                    refresh_token: refreshToken,
-                    client_Id: CLIENT_ID
-                })
-            });
-
-            if (!response.ok) {
-                document.getElementById('content').textContent =
-                    `Refresh Failed: ${await response.text}`;
-                return;
-            }
-            
-            const tokens = await response.json();
-            sessionStorage.setItem('access_token', tokens.access_token);
-            sessionStorage.setItem('refresh_token', tokens.refresh_token);
-            document.getElementById('api-result').textContent = 'Token refreshed successfully.';
-        }
-
-        window.addEventListener('DOMContentLoaded', () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
-            const state = urlParams.get('state');
-
-            if (code) {
-                // We are returning from a call to the /authorize endpoint
-                exchangeCodeForTokens(code, state);
-            } else {
-                showSignInOptions();
-            }
-        });
+        
+        window.addEventListener('DOMContentLoaded', checkSession)
     </script>
 </body>
-</html>

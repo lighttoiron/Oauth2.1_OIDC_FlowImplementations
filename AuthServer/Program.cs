@@ -3,7 +3,9 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text.Json;
 
 // TODO: add a refresh token to the response and the client app
-// Add a backend database of some kind
+// TODO: add a client ID and client secret to our BFF backend so we are a registered client
+// TODO: convert our page to a web components based model with multiple tabs for different auth flows
+// TODO: add a backend database of some kind
 
 var builder = WebApplication.CreateBuilder(args);
 

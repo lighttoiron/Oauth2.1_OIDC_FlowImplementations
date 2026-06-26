@@ -1,0 +1,1 @@
+record LoginAttempt(string CodeVerifier, string State, DateTime ExpiresAt);

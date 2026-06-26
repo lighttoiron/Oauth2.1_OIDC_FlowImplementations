@@ -85,10 +85,14 @@ static class TokenEndpoint
         var response = new Dictionary<string, object?>
         {
             ["access_token"] = accessToken,
-            ["id_token"] = idToken,
             ["token_type"] = "Bearer",
             ["expires_in"] = expiresIn
         };
+
+        if (idToken is not null)
+        {
+            response["id_token"] = idToken;
+        }
 
         // If a refresh token is requested, build it here
         if (authCodeData.Scope.Split(' ').Contains("offline_access"))
@@ -178,17 +182,23 @@ static class TokenEndpoint
             ExpiresAt: refreshTokenData.ExpiresAt
         );
 
-        return Results.Ok(new
+        var response = new Dictionary<string, object>
         {
-            access_token = accessToken,
-            id_token = idToken,
-            refresh_token = newRefreshToken,
-            token_type = "Bearer",
-            expires_in = expiresIn
-        });
+          ["access_token"] = accessToken,
+          ["refresh_token"] = newRefreshToken,
+          ["token_type"] = "Bearer",
+          ["expires_in"] = expiresIn  
+        };
+
+        if (idToken is not null)
+        {
+            response["id_token"] = idToken;
+        }
+
+        return Results.Ok(response);
     }
 
-    private static (string accessToken, string idToken, int expiresIn) IssueTokens(
+    private static (string accessToken, string? idToken, int expiresIn) IssueTokens(
         AuthServerOptions config, ISigningKeyProvider keys, string subject, string scope, string clientId, string? nonce = null)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
@@ -224,26 +234,31 @@ static class TokenEndpoint
 
         // --- ID token: proof of authentication, only used on the front end of the client, not passed to the API ---
         // aud here is the CLIENT aud value, not the API aud value since the client will consume this
-        var idTokenClaims = new List<Claim>
+        // If openid is not included in the scope list, do not return an id token
+        string? idToken = null;
+        if (scope.Split(' ').Contains("openid"))
         {
-            new Claim(JwtRegisteredClaimNames.Sub, subject)
-        };
+            var idTokenClaims = new List<Claim>
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, subject)
+            };
 
-        if (!string.IsNullOrEmpty(nonce))
-        {
-            idTokenClaims.Add(new Claim(JwtRegisteredClaimNames.Nonce, nonce));
+            if (!string.IsNullOrEmpty(nonce))
+            {
+                idTokenClaims.Add(new Claim(JwtRegisteredClaimNames.Nonce, nonce));
+            }
+
+            idToken = tokenHandler.CreateEncodedJwt(new SecurityTokenDescriptor
+            {
+                Issuer = config.Issuer,
+                Audience = clientId, // Client Id here, not API
+                Subject = new ClaimsIdentity(idTokenClaims),
+                IssuedAt = now,
+                NotBefore = now,
+                Expires = idTokenExpiry,
+                SigningCredentials = signingCredentials
+            });
         }
-
-        var idToken = tokenHandler.CreateEncodedJwt(new SecurityTokenDescriptor
-        {
-            Issuer = config.Issuer,
-            Audience = clientId, // Client Id here, not API
-            Subject = new ClaimsIdentity(idTokenClaims),
-            IssuedAt = now,
-            NotBefore = now,
-            Expires = idTokenExpiry,
-            SigningCredentials = signingCredentials
-        });
 
         return (accessToken, idToken, (int)(accessTokenExpiry - now).TotalSeconds);
     }
