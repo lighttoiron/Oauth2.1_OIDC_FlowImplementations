@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<html>
 <head><title>Oauth Lab Client with BFF</title></head>
 <body>
     <h1>Oauth Lab Client with BFF</h1>
@@ -13,16 +14,60 @@
                 ? `<p>Signed in as <strong>${data.subject}</strong>.</p>
                    <button onclick="callProtectedApi()">Call Protected API</button>
                    <pre id="api-result"></pre>`
-                : `<a href="/bff/login"><button>Sign In</button></a>`;
+                : `<a href="/bff/login"><button>Sign In (Redirect)</button></a>
+                  <button onclick="signInWithPopup()">Sign In (Popup)</button>`;
 
         }
 
         async function callProtectedApi() {
             const response = await fetch('/bff/protected');
-            document.getElementById('api-result').textContent =
-                JSON.stringify(await response.json(), null, 2);
+            if (!response.ok) {
+                document.getElementById('api-result').textContent = `Error: unable to fetch protected data. Response status: ${response.status}`;
+            } else {
+                document.getElementById('api-result').textContent =
+                    JSON.stringify(await response.json(), null, 2);
+            }
         }
         
+        function signInWithPopup() {
+            const popup = window.open('about:blank', 'bff_login_popup', 'width=500,height=650');
+
+            if (!popup) {
+                window.location.href = 'bff/login'; // Popup window was blocked, fall back to a full page redirect
+                return;
+            }
+
+            const channel = new BroadcastChannel('bff_login');
+            let settled = false;
+
+            channel.onmessage = (event) => {
+                // Ensure we are responding to the expected message on the BroadcastChannel
+                if(event.data?.type !== 'bff_login_result') {
+                    return;
+                }
+
+                settled = true;
+                channel.close();
+                clearInterval(closeCheck);
+                if (event.data.success) {
+                    checkSession();
+                } else {
+                    document.getElementById('content').textContent = `Sign in failed: ${event.data.error}`;
+                }
+            }
+
+            const closeCheck = setInterval(() => {
+                if (popup.closed && !settled) {
+                    clearInterval(closeCheck);
+                    channel.close();
+                    document.getElementById('content').textContent = 'Popup closed before sign in could complete';
+                }
+            }, 500);
+
+            popup.location.href = '/bff/login?popup=true';
+        }
+
         window.addEventListener('DOMContentLoaded', checkSession)
     </script>
 </body>
+</html>

@@ -15,7 +15,7 @@ static class BffEndpoints
     {
         // The initial sign in call endpoint
         // Generates PKCE values, stores a login attempt with the code verifier, and initiates the call to /authorize
-        app.MapGet("/bff/login", (HttpContext context, IOptions<BffOptions> options) =>
+        app.MapGet("/bff/login", (HttpContext context, IOptions<BffOptions> options, bool popup = false) =>
         {
             var config = options.Value;
 
@@ -26,7 +26,10 @@ static class BffEndpoints
 
             var attemptId = Base64Url(RandomNumberGenerator.GetBytes(16));
             BffStore.LoginAttempts[attemptId] = new LoginAttempt(
-                codeVerifier, state, DateTime.UtcNow.AddMinutes(5)
+                codeVerifier,
+                state,
+                popup,
+                DateTime.UtcNow.AddMinutes(5)
             );
 
             context.Response.Cookies.Append(LoginAttemptCookieName, attemptId, new CookieOptions
@@ -56,6 +59,7 @@ static class BffEndpoints
             HttpContext context,
             string? code,
             string? state,
+            string? error,
             IOptions<BffOptions> options,
             IHttpClientFactory httpFactory) =>
         {
@@ -70,6 +74,24 @@ static class BffEndpoints
             {
                 return Results.BadRequest("Unknown or expired login attempt.");
             }
+
+            context.Response.Cookies.Delete(LoginAttemptCookieName);
+
+            // Redirect the page as appropriate based on whether or not this login attempt is via a popup window
+            IResult Finish(bool success, string? errorMessage = null)
+            {
+                if (!loginAttempt.IsPopup)
+                {
+                    return success ? Results.Redirect("/") : Results.BadRequest(errorMessage);
+                }
+
+                var queryParams = success ? "" : $"?error={Uri.EscapeDataString(errorMessage ?? "login_failed")}";
+                return Results.Redirect($"/popup-complete.html{queryParams}");
+            }
+            //
+
+            // If we received an error message from the authorization server, we can return that message here
+            if (error is not null) return Finish(false, error);
 
             if (state != loginAttempt.State)
             {
@@ -98,6 +120,9 @@ static class BffEndpoints
             var accessToken = tokens.GetProperty("access_token").GetString()!;
             var refreshToken = tokens.GetProperty("refresh_token").GetString()!;
             var expiresIn = tokens.GetProperty("expires_in").GetInt32();
+            // Note: this is an arbitrary guess and not tied to the actual expiriry of the refresh tokens, this could get out of sync if our auth server changes policy.
+            // We could have the server return us a custom property to give us the proper value, but it's not part of the OAuth2.0 spec
+            var refreshExpiresIn = DateTime.UtcNow.AddDays(30);
 
             var sessionId = Base64Url(RandomNumberGenerator.GetBytes(32));
             BffStore.Sessions[sessionId] = new BffSession(
@@ -105,12 +130,9 @@ static class BffEndpoints
                 AccessToken: accessToken,
                 RefreshToken: refreshToken,
                 AccessTokenExpiresAt: DateTime.UtcNow.AddSeconds(expiresIn),
-                // Note: this is an arbitrary guess and not tied to the actual expiriry of the refresh tokens, this could get out of sync if our auth server changes policy.
-                // We could have the server return us a custom property to give us the proper value, but it's unnecessary here
-                ExpiresAt: DateTime.UtcNow.AddDays(30)
+                ExpiresAt: refreshExpiresIn
             );
 
-            context.Response.Cookies.Delete(LoginAttemptCookieName);
             context.Response.Cookies.Append(SessionCookieName, sessionId, new CookieOptions
             {
                 HttpOnly = true,
@@ -119,7 +141,7 @@ static class BffEndpoints
                 MaxAge = TimeSpan.FromDays(30)
             });
         
-            return Results.Redirect("/"); // Redirect back to the base page from this server
+            return Finish(true); // Redirect back to the base page from this server
         });
 
         // Informs the client page if the user is currently signed in

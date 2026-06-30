@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Signing In...</title>
+</head>
+<body>
+    <p>Completing Sign In...</p>
+    <script>
+        const params = new URLSearchParams(window.location.href);
+        const error = params.get('error');
+
+        const channel = new BroadcastChannel('bff_login');
+        channel.postMessage({
+            success: !error,
+            type: 'bff_login_result',
+            error
+        });
+        channel.close();
+
+        window.close();
+    </script>
+</body>
+</html>
