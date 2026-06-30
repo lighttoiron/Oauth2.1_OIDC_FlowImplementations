@@ -99,8 +99,8 @@ static class AuthorizeEndpoint
                     <p>Scope: <strong>{{scope}}</strong></p>
                     <form method="post" action="/authorize">
                         <input type="hidden" name="requestId" value="{{requestId}}" />
-                        <label>Username: <input type="text" name="username" /></label><br/>
-                        <label>Password: <input type="password" name="password" /></label><br/>
+                        <label>Username: <input type="text" name="username" value="user1"></input></label><br/>
+                        <label>Password: <input type="password" name="password" value="pass1"></input></label><br/>
                         <button type="submit">Sign In</button>
                     </form>
                 </body>
