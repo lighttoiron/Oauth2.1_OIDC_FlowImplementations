@@ -1,53 +1,21 @@
+import { loadBaseSheets, loadSheet } from './styles/loader.js';
+
+const baseSheets = await loadBaseSheets();
+
 // The sign-in-options element exposes sign in options to the user.
 // The user can choose to sign in with a full page redirect, or through a popup window
 class SignInOptions extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
+        this.shadowRoot.adoptedStyleSheets = [...baseSheets];
     }
 
     connectedCallback() {
         this.shadowRoot.innerHTML = `
-            <style>
-                :host { display: block; }
-                .actions {
-                    display: flex;
-                    gap: 10px;
-                    flex-wrap: wrap;
-                }
-                button, a {
-                    font-family: 'Inter', sans-serif;
-                    font-size: 13px;
-                    font-weight: 500;
-                    padding: 9px 18px;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    transition: all 0.15s;
-                    text-decoration: none;
-                    display: inline-block;
-                }
-                .btn-redirect {
-                    background: #7C6AFE;
-                    color: #fff;
-                    border: 1px solid #7C6AFE
-                }
-                .btn-redirect:hover {
-                    background: #8F7FFF;
-                    border-color: #8F7FFF;
-                }
-                .btn-popup {
-                    background: transparent;
-                    color: #C0C0D8;
-                    border: 1px solid 2A2D3A;
-                }
-                .btn-popup:hover {
-                    border-color: #7C6AFE;
-                    color: #E0E0F0;
-                }
-            </style>
-            <div class="actions">
-                <a href="/bff/login" class="btn-redirect">Sign In (Redirect)</a>
-                <button id="popup-btn" class="btn-popup">Sign In (Popup)</button>
+            <div class="actions" style="display:flex; gap:10px; flex-wrap:wrap;">
+                <a href="/bff/login" class="btn btn-primary">Sign In (Redirect)</a>
+                <button id="popup-btn" class="btn btn-secondary">Sign In (Popup)</button>
             </div>
         `;
         this.shadowRoot.getElementById('popup-btn')

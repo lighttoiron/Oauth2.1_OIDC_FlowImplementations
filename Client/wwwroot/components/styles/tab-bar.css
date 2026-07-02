@@ -1,0 +1,45 @@
+:host { display: block; }
+
+nav {
+    display: flex;
+    gap: 2px;
+    border-bottom: 1px solid var(--color-border);
+    padding: 0 24px;
+}
+
+button {
+    position: relative;
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    padding: 14px 18px 12px;
+    cursor: pointer;
+    transition: color var(--transition);
+    outline: none;
+}
+
+    button:hover { color: var(--color-text-primary) }
+    button.active { color: var(--color-text-primary) }
+    button.active::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 0; right: 0;
+        height: 2px;
+        background: var(--color-accent);
+        border-radius: 2px 2px 0 0;
+        animation: pulse-in 0.25s ease;
+    }
+
+    @keyframes pulse-in {
+        from { opacity: 0; transform: scaleX(0.4); }
+        to   { opacity: 1; transform: scaleX(1); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        button.active::after { animation:none; }
+    }

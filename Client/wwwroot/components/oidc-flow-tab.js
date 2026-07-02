@@ -1,40 +1,18 @@
 import "./session-status.js";
+import { loadBaseSheets, loadSheet } from './styles/loader.js';
+
+const baseSheets = await loadBaseSheets();
+const ownSheet = await loadSheet('/components/styles/oidc-flow-tab.css');
 
 class OidcFlowTab extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
+        this.shadowRoot.adoptedStyleSheets = [...baseSheets, ownSheet];
     }
 
     connectedCallback() {
         this.shadowRoot.innerHTML = `
-            <style>
-                :host {
-                    display: block;
-                    padding 32px 0;
-                }
-                .description {
-                    font-family: 'Inter', sans-serif;
-                    font-size: 13px;
-                    color: #8E8EA0;
-                    line-height: 1.6;
-                    margin: 0 0 28px;
-                    padding-bottom: 20px;
-                    border-bottom: 1px solid #2A2D3A;
-                }
-                .description strong {
-                    color: #C0C0D8;
-                    font-weight: 500;
-                }
-                .flow-label {
-                    font-family: 'JetBrains Mono', monospace;
-                    font-size: 10px;
-                    letter-spacing: 0.12em;
-                    text-transform: uppercase;
-                    color: #7C6AFE;
-                    margin: 0 0 16px;
-                }
-            </style>
             <p class="flow-label">Authorization Code + PKCE with BFF SPA Architecture</p>
             <p class="description">
                 Initiates an <strong>OIDC login flow</strong> using Authorization Code with PKCE.

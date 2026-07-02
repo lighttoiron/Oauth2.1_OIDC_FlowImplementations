@@ -1,0 +1,43 @@
+:host { display: block; }
+
+.loading {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-text-ghost);
+}
+
+.signed-in-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+}
+
+.indicator {
+    width: 7px;
+    height: 7px;
+    background: var(--color-success);
+    border-radius: 50%;
+    margin-right: 8px;
+    display: inline-block;
+}
+
+.subject {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-success);
+}
+
+.error {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-error);
+    padding: 10px 14px;
+    background: rgba(255, 69, 58, 0.08);
+    border: 1px solid rgba(255, 69, 58, 0.2);
+    border-radius: var(--radius);
+}

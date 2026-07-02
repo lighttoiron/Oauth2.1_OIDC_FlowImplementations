@@ -1,0 +1,17 @@
+:host {
+    --color-bg-primary: #0F1117;
+    --color-bg-surface: #1A1D27;
+    --color-border: #2A2D3A;
+    --color-accent: #7C6AFE;
+    --color-accent-hover: #8F7FFF;
+    --color-text-primary: #E0E0F0;
+    --color-text-secondary: #C0C0D8;
+    --color-text-muted: #8E8EA0;
+    --color-text-ghost: #4A4D5E;
+    --color-success: #30D158;
+    --color-error: #FF453A;
+    --font-ui: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --radius: 6px;
+    --transition: 0.15s ease;
+}

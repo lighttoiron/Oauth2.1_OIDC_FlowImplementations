@@ -1,11 +1,15 @@
 import "./tab-bar.js";
 import "./oidc-flow-tab.js";
 import "./oauth-api-tab.js";
+import { loadBaseSheets } from './styles/loader.js';
+
+const baseSheets = await loadBaseSheets();
 
 class AppShell extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
+        this.shadowRoot.adoptedStyleSheets = [...baseSheets];
         this._activeTab = 'oidc';
     }
 

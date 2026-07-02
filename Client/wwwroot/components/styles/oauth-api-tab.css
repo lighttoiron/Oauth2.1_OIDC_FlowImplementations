@@ -1,0 +1,38 @@
+:host {
+    display: block;
+    padding: 32px 0;
+}
+
+.description {
+    font-family: var(--font-ui);
+    font-size: 13px;
+    color: var(--color-text-muted);
+    line-height: 1.6;
+    margin: 0 0 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.description strong {
+    color: var(--color-text-secondary);
+    font-weight: 500;
+}
+
+.flow-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-accent);
+    margin: 0 0 16px;
+}
+
+.placeholder {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-text-ghost);
+    padding: 32px;
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius);
+    text-align: center;
+}
