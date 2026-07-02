@@ -14,12 +14,56 @@ class SessionStatus extends HTMLElement {
     }
 
     connectedCallback() {
-        this.shadowRoot.innerHTML = `<p>Loading...</p>`
+        this.shadowRoot.innerHTML = `
+            <style>
+                :host { display: block; }
+                .loading {
+                    font-family: 'JetBrains Mono', monospace;
+                    font-size: 12px;
+                    color: #4A4D5E;
+                }
+                .signed-in-bar {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 10px 14px;
+                    background: #1A1D27;
+                    border: 1px solid #2A2D3A;
+                    border-radius: 6px;
+                    margin-bottom: 20px;
+                }
+                .signed-in-bar .subject {
+                    font-family: 'JetBrains Mono', monospace;
+                    font-size: 12px;
+                    color #30D158;
+                }
+                .signed-in-bar .indicator {
+                    width: 7px;
+                    height: 7px;
+                    background: #30D158;
+                    border-radius: 50%;
+                    margin-right: 8px;
+                    display: inline-block;
+                }
+                .error {
+                    font-family: 'JetBrains Mono', monospace;
+                    font-size: 12px;
+                    color: #FF453A;
+                    padding: 10px 14px;
+                    background: rgba(255, 69, 58, 0.08);
+                    border: 1px solid rgba(255, 69, 58, 0.2);
+                    border-radius: 6px;
+                }
+            </style>
+            <p>Loading Session...</p>
+        `
         this.checkSession();
 
         this.addEventListener('signed-in', () => this.checkSession());
         this.addEventListener('sign-in-error', (event) => {
-            this.shadowRoot.innerHTML = `<p>Sign in failed: ${event.detail.error}</p>`;
+            this.shadowRoot.innerHTML = `
+                <p class="error">Sign in failed: ${event.detail.error}</p>
+            `;
         });
     }
 
@@ -30,9 +74,14 @@ class SessionStatus extends HTMLElement {
         this.shadowRoot.innerHTML = '';
 
         if (data.authenticated) {
-            const status = document.createElement('p');
-            status.innerHTML = `Signed in as <strong>${data.subject}</strong>.`;
-            this.shadowRoot.appendChild(status);
+            const bar = document.createElement('div');
+            bar.innerHTML = `
+                <span>
+                    <span class="indicator"></span>
+                    <span class="subject">${data.subject}</span>
+                </span>
+            `;
+            this.shadowRoot.appendChild(bar);
             this.shadowRoot.appendChild(document.createElement('api-caller'));
         } else {
             this.shadowRoot.appendChild(document.createElement('sign-in-options'));
