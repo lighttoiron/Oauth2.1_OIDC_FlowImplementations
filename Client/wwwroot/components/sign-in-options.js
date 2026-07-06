@@ -14,7 +14,7 @@ class SignInOptions extends HTMLElement {
     connectedCallback() {
         this.shadowRoot.innerHTML = `
             <div class="actions" style="display:flex; gap:10px; flex-wrap:wrap;">
-                <a href="/bff/login" class="btn btn-primary">Sign In (Redirect)</a>
+                <a href="/bff/login?mode=${this.getAttribute('login-type') || 'full'}" class="btn btn-primary">Sign In (Redirect)</a>
                 <button id="popup-btn" class="btn btn-secondary">Sign In (Popup)</button>
             </div>
         `;
@@ -24,10 +24,11 @@ class SignInOptions extends HTMLElement {
 
     signInWithPopup() {
         const popup = window.open('about:blank', 'bff_login_popup', 'width=500,height=650');
+        const loginType = this.getAttribute('login-type') || 'full';
 
         if (!popup)
         {
-            window.location.href = '/bff/login'; // If the popup window was blocked, perform a login by redirect instead
+            window.location.href = `/bff/login?mode=${loginType}`; // If the popup window was blocked, perform a login by redirect instead
             return;
         }
 
@@ -72,7 +73,7 @@ class SignInOptions extends HTMLElement {
             }
         };
 
-        popup.location.href = '/bff/login?popup=true';
+        popup.location.href = `/bff/login?popup=true&mode=${loginType}`;
     }
 }
 

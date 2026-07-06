@@ -1,4 +1,5 @@
 import "./session-status.js";
+import "./user-info.js";
 import { loadBaseSheets, loadSheet } from './styles/loader.js';
 
 const baseSheets = await loadBaseSheets();
@@ -12,6 +13,15 @@ class OidcFlowTab extends HTMLElement {
     }
 
     connectedCallback() {
+        this._onSessionReady = (e) => {
+            const userInfo = this.shadowRoot.querySelector('user-info');
+            if (userInfo) {
+                userInfo.subject = e.detail.subject;
+            }
+        }
+
+        this.addEventListener('session-ready', this._onSessionReady);
+
         this.shadowRoot.innerHTML = `
             <p class="flow-label">Authorization Code + PKCE with BFF SPA Architecture</p>
             <p class="description">
@@ -19,8 +29,13 @@ class OidcFlowTab extends HTMLElement {
                 The BFF server handles token exhange on the server side - tokens are never passed directly to the browser.
                 The BFF issues a session cookie instead and manages storing and sending access tokens.
             </p>
-            <session-status></session-status>
+            <session-status login-type="${ this.getAttribute('login-type') || 'full' }"></session-status>
+            <user-info></user-info>
         `;
+    }
+
+    disconnectedCallback() {
+        this.removeEventListener('session-ready', this._onSessionReady);
     }
 }
 

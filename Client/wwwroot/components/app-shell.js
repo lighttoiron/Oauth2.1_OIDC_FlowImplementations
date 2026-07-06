@@ -30,8 +30,11 @@ class AppShell extends HTMLElement {
                 .panel.active {display: block; }
             </style>
             <tab-bar active="${this._activeTab}"></tab-bar>
+            <div class="panel ${this._activeTab === 'combined' ? 'active' : ''}">
+                <oidc-flow-tab login-type="full"></oidc-flow-tab>
+            </div>
             <div class="panel ${this._activeTab === 'oidc' ? 'active' : ''}">
-                <oidc-flow-tab></oidc-flow-tab>
+                <oidc-flow-tab login-type="identity"></oidc-flow-tab>
             </div>
             <div class="panel ${this._activeTab === "oauth" ? 'active' : ''}">
                 <oauth-api-tab></oauth-api-tab>

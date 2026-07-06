@@ -19,7 +19,7 @@ class TabBar extends HTMLElement {
         this.render();
         this.shadowRoot.addEventListener('click', (e) => {
             // e.target is the actual element that was clicked, .closest() walks up the DOM looking for the nearest 'data-tab' parent, or null if none found
-            const tab = e.target.closest('[data-tab');
+            const tab = e.target.closest('[data-tab]');
             if (!tab) {
                 return;
             }
@@ -39,6 +39,7 @@ class TabBar extends HTMLElement {
     render() {
         const activeTab = this.getAttribute('active') || 'oidc';
         const tabs = [
+            { id: 'combined', label: 'Login + API' },
             { id: 'oidc', label: 'OIDC Login Flow' },
             { id: 'oauth', label: 'OAuth2.0 API Access' }
         ];

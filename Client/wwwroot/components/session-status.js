@@ -12,6 +12,13 @@ const ownSheet = await loadSheet('/components/styles/session-status.css');
 // If the user is signed in, offer a call to the protected API
 // If the user is not signed in, offer sign in options
 class SessionStatus extends HTMLElement {
+    static get observedAttributes() { return ['mode']; };
+
+    attributeChangedCallback() {
+        // If we are connected to the document, re-render whenever the mode attribute changes
+        if (this.isConnected) this.checkSession();
+    }
+
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
@@ -24,12 +31,20 @@ class SessionStatus extends HTMLElement {
         `
         this.checkSession();
 
-        this.addEventListener('signed-in', () => this.checkSession());
-        this.addEventListener('sign-in-error', (event) => {
+        this._onSignedIn = () => this.checkSession();
+        this._onSignInError = (e) => {
             this.shadowRoot.innerHTML = `
-                <p class="error">Sign in failed: ${event.detail.error}</p>
+                <p class="error">Sign in failed: ${e.detail.error}</p>
             `;
-        });
+        };
+
+        this.addEventListener('signed-in', this._onSignedIn);
+        this.addEventListener('sign-in-error', this._onSignInError);
+    }
+
+    disconnectedCallback() {
+        this.removeEventListener('signed-in', this._onSignedIn);
+        this.removeEventListener('sign-in-error', this._onSignInError);
     }
 
     async checkSession() {
@@ -39,17 +54,15 @@ class SessionStatus extends HTMLElement {
         this.shadowRoot.innerHTML = '';
 
         if (data.authenticated) {
-            const bar = document.createElement('div');
-            bar.innerHTML = `
-                <span>
-                    <span class="indicator"></span>
-                    <span class="subject">${data.subject}</span>
-                </span>
-            `;
-            this.shadowRoot.appendChild(bar);
-            this.shadowRoot.appendChild(document.createElement('api-caller'));
+            this.dispatchEvent(new CustomEvent('session-ready', {
+                bubbles: true, // Lets objects other than this object receive this event
+                composed: true, // Lets listeners that exist outside this element's shadow DOM receive this event
+                detail: { subject: data.subject }
+            }));
         } else {
-            this.shadowRoot.appendChild(document.createElement('sign-in-options'));
+            const signInElement = document.createElement('sign-in-options');
+            signInElement.setAttribute('login-type', this.getAttribute('login-type' || 'full'));
+            this.shadowRoot.appendChild(signInElement);
         }
     }
 }

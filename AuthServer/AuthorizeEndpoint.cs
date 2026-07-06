@@ -1,12 +1,19 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent; // Thread-safe collections
+using System.Linq;
 
 
 // Test this endpoint with the following string to pass the required info in the query params
 
 static class AuthorizeEndpoint
 {
+    static readonly HashSet<string> _supportedScopes = [
+        "openid",
+        "offline_access",
+        "api.read"
+    ];
+
     public static void Map(WebApplication app)
     {
         // Set up the GET route
@@ -41,9 +48,9 @@ static class AuthorizeEndpoint
                 return Results.BadRequest(new { error = "invalid_request", error_message = "Missing redirect_uri." });
             }
 
-            if (string.IsNullOrEmpty(scope) || !scope.Split(' ').Contains("openid")) // Coudl contain other valid scope types as well, just need to ensure one scope to work with at least
+            if (string.IsNullOrEmpty(scope) || !ContainsSupportedScopes(scope)) // Could contain other valid scope types as well, just need to ensure one scope to work with at least
             {
-                return Results.BadRequest(new { error = "invalid_request", error_message = "Missing or invalid scope. 'openid' scope is required." });
+                return Results.BadRequest(new { error = "invalid_request", error_message = "Missing or invalid scope. 'openid' or other supported scope is required." });
             }
 
             if (string.IsNullOrEmpty(state))
@@ -183,5 +190,11 @@ static class AuthorizeEndpoint
             var redirectUrl = $"{pending.RedirectUri}?code={Uri.EscapeDataString(code)}&state={Uri.EscapeDataString(pending.State)}";
             return Results.Redirect(redirectUrl);
         });
+    }
+
+    private static bool ContainsSupportedScopes(string scope)
+    {
+        string[] scopes = scope.Split(' ');
+        return scopes.Intersect(_supportedScopes).Any();
     }
 }

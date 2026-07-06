@@ -15,9 +15,16 @@ static class BffEndpoints
     {
         // The initial sign in call endpoint
         // Generates PKCE values, stores a login attempt with the code verifier, and initiates the call to /authorize
-        app.MapGet("/bff/login", (HttpContext context, IOptions<BffOptions> options, bool popup = false) =>
+        app.MapGet("/bff/login", (HttpContext context, IOptions<BffOptions> options, bool popup = false, string mode = "") =>
         {
             var config = options.Value;
+
+            var scope = mode switch
+            {
+                "identity" => "openid",
+                "full" => "openid offline_access api.read",
+                _ => "openid"
+            };
 
             var codeVerifierBytes = RandomNumberGenerator.GetBytes(32);
             var codeVerifier = Base64Url(codeVerifierBytes); 
@@ -45,7 +52,7 @@ static class BffEndpoints
                 ["response_type"] = "code",
                 ["client_id"] = config.ClientId,
                 ["redirect_uri"] = config.CallbackRedirectUri,
-                ["scope"] = "openid offline_access",
+                ["scope"] = scope,
                 ["state"] = state,
                 ["code_challenge"] = codeChallenge,
                 ["code_challenge_method"] = "S256"
