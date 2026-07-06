@@ -18,11 +18,12 @@ builder.Services.AddHttpLogging(logging =>
 
 // Add CORS policy to allow cross origin requests from our client JS
 // This needs to be configured for each other origin that we want to allow to call this endpoint
+// Note that a SPA operating with a BFF architecture does not call this endpoint directly and does not need to allow CORS requests
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("ClientApp", policy =>
     {
-        policy.WithOrigins("http://localhost:5172")
+        policy.WithOrigins("http://localhost:7000")
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -71,9 +72,6 @@ DiscoveryEndpoint.Map(app, jsonOptions);
 //
 
 // Add the /authorization endpoint
-// code challenge: OlOX4IXptyHZUkSTk6172xG458ilF9cjTPd0VQmt6AU
-// code verifier: qkYt3EBDENHoW2kARGqN3AcpcfDCszKieYoXhQoTplA
-//  https://localhost:7051/authorize?response_type=code&client_id=test-client&redirect_uri=https://localhost:7051/callback&scope=openid&state=abc123&code_challenge=OlOX4IXptyHZUkSTk6172xG458ilF9cjTPd0VQmt6AU&code_challenge_method=S256
 AuthorizeEndpoint.Map(app);
 //
 

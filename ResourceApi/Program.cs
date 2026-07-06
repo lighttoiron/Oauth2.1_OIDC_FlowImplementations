@@ -15,11 +15,12 @@ builder.Services.AddHttpLogging(logging =>
 //
 
 // Add CORS to allow our client app to call this endpoint
+// Note that a SPA operating with a BFF architecture does not call this endpoint directly and does not need to allow CORS requests
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("ClientApp", policy =>
     {
-        policy.WithOrigins("http://localhost:5172")
+        policy.WithOrigins("http://localhost:7000")
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
