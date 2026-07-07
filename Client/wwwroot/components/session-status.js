@@ -2,7 +2,6 @@
 // For our app, since the user has to interact before they would be rendered, we wouldn't really need this, but it is good practice
 // And allows us to not include a script tag in our page HTML for any component not explicitly loaded there
 import './sign-in-options.js';
-import './api-caller.js';
 import { loadBaseSheets, loadSheet } from './styles/loader.js';
 
 const baseSheets = await loadBaseSheets();

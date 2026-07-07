@@ -1,5 +1,6 @@
 import "./session-status.js";
 import "./user-info.js";
+import './api-caller.js';
 import { loadBaseSheets, loadSheet } from './styles/loader.js';
 
 const baseSheets = await loadBaseSheets();
@@ -18,6 +19,13 @@ class OidcFlowTab extends HTMLElement {
             if (userInfo) {
                 userInfo.subject = e.detail.subject;
             }
+
+            if (this.getAttribute('login-type') === 'full') {
+                const apiCaller = this.shadowRoot.querySelector('api-caller');
+                if (apiCaller) {
+                    apiCaller.sessionReady = true;
+                }
+            }
         }
 
         this.addEventListener('session-ready', this._onSessionReady);
@@ -31,6 +39,7 @@ class OidcFlowTab extends HTMLElement {
             </p>
             <session-status login-type="${ this.getAttribute('login-type') || 'full' }"></session-status>
             <user-info></user-info>
+            <api-caller></api-caller>
         `;
     }
 

@@ -3,6 +3,8 @@ using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Authentication.BearerToken;
+using Microsoft.AspNetCore.Routing.Tree;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
 
@@ -35,6 +37,7 @@ static class BffEndpoints
             BffStore.LoginAttempts[attemptId] = new LoginAttempt(
                 codeVerifier,
                 state,
+                scope,
                 popup,
                 DateTime.UtcNow.AddMinutes(5)
             );
@@ -124,21 +127,43 @@ static class BffEndpoints
             }
 
             var tokens = await tokenResponse.Content.ReadFromJsonAsync<JsonElement>();
-            var accessToken = tokens.GetProperty("access_token").GetString()!;
-            var refreshToken = tokens.GetProperty("refresh_token").GetString()!;
-            var expiresIn = tokens.GetProperty("expires_in").GetInt32();
-            // Note: this is an arbitrary guess and not tied to the actual expiriry of the refresh tokens, this could get out of sync if our auth server changes policy.
+            bool hasIdToken = tokens.TryGetProperty("id_token", out var idTokenJson);
+            var idToken = hasIdToken ? idTokenJson.GetString() : null;
+            bool hasAccessToken = tokens.TryGetProperty("access_token", out var accessTokenJson);
+            var accessToken = hasAccessToken ? accessTokenJson.GetString() : null;
+            bool hasExpiresIn = tokens.TryGetProperty("expires_in", out var expiresInJson);
+            int? expiresIn = hasExpiresIn ? expiresInJson.GetInt32() : null;
+            DateTime? accessTokenExpiresAt = expiresIn is not null ? DateTime.UtcNow.AddSeconds((double)expiresIn) : null;
+            bool hasScope = tokens.TryGetProperty("scope", out var scopeJson);
+            var scope = hasScope ? scopeJson.GetString()! : loginAttempt.Scope; // If no scope is returned, assume we have the initial scopes we requested
+            var subject = idToken is not null
+                ? DecodeSubjectFromJwt(idToken)
+                : accessToken is not null
+                    ? DecodeSubjectFromJwt(accessToken)
+                    : null;
+
+            if (subject is null)
+            {
+                return Results.BadRequest("Token response contained no identifiable subject.");
+            }
+
+            bool hasRefreshToken = tokens.TryGetProperty("refresh_token", out var refreshTokenJson);
+            var refreshToken = hasRefreshToken ? refreshTokenJson.GetString() : null;
+            // Note: this is an arbitrary guess and not tied to the actual expiriry of the refresh tokens or anything else, this could get out of sync if our auth server changes policy.
             // We could have the server return us a custom property to give us the proper value, but it's not part of the OAuth2.0 spec
-            var refreshExpiresIn = DateTime.UtcNow.AddDays(30);
+            var sessionExpiresAt = DateTime.UtcNow.AddDays(30);
 
             var sessionId = Base64Url(RandomNumberGenerator.GetBytes(32));
-            BffStore.Sessions[sessionId] = new BffSession(
-                Subject: DecodeSubjectFromJwt(accessToken),
+            var bffSession = new BffSession(
+                Subject: subject,
+                Scope: scope,
                 AccessToken: accessToken,
                 RefreshToken: refreshToken,
-                AccessTokenExpiresAt: DateTime.UtcNow.AddSeconds(expiresIn),
-                ExpiresAt: refreshExpiresIn
+                AccessTokenExpiresAt: accessTokenExpiresAt,
+                ExpiresAt: sessionExpiresAt
             );
+
+            BffStore.Sessions[sessionId] = bffSession;
 
             context.Response.Cookies.Append(SessionCookieName, sessionId, new CookieOptions
             {
@@ -155,9 +180,21 @@ static class BffEndpoints
         app.MapGet("/bff/me", (HttpContext context) =>
         {
             var session = GetSession(context);
-            return session is null
-                ? Results.Ok(new { authenticated = false })
-                : Results.Ok(new { authenticated = true, subject = session.Subject });
+
+            if (session is null)
+            {
+                return Results.Ok(new { authenticated = false });
+            }
+
+            var scopes = session.Scope.Split(' ').ToHashSet();
+            return Results.Ok(
+                new {
+                    authenticated = true,
+                    subject = session.Subject,
+                    scope = session.Scope,
+                    hasApiAccess = scopes.Contains("api.read"),
+                    hasRefreshToken = session.RefreshToken is not null
+                });
         });
 
         app.MapGet("/bff/protected", async(
@@ -169,6 +206,17 @@ static class BffEndpoints
             if (session is null)
             {
                 return Results.Unauthorized();
+            }
+
+            if (session.AccessToken is null || session.AccessTokenExpiresAt is null)
+            {
+                return Results.Json(
+                    new
+                    {
+                        error = "insifficient_scope",
+                        error_message = "No valid API access code was associated with this session.  Access denied."
+                    },
+                    statusCode: 403);
             }
 
             if (session.AccessTokenExpiresAt < DateTime.UtcNow.AddSeconds(10))
@@ -214,6 +262,11 @@ static class BffEndpoints
         BffOptions config,
         IHttpClientFactory httpFactory)
     {
+        if (session.RefreshToken is null)
+        {
+            return null;
+        }
+
         var http = httpFactory.CreateClient();
         var response = await http.PostAsync(
             $"{config.AuthServerUrl}/token",
@@ -232,11 +285,15 @@ static class BffEndpoints
 
         var tokens = await response.Content.ReadFromJsonAsync<JsonElement>();
 
+        bool hasScope = tokens.TryGetProperty("scope", out var scopeJson);
+        var scope = hasScope ? scopeJson.GetString()! : session.Scope; // Fall back to originally requested scope if no scope is explicitly provided
+
         return session with
         {
+            Scope = scope,
             AccessToken = tokens.GetProperty("access_token").GetString()!,
             RefreshToken = tokens.GetProperty("refresh_token").GetString()!,
-            AccessTokenExpiresAt = DateTime.UtcNow.AddSeconds(tokens.GetProperty("expires_in").GetInt32())
+            AccessTokenExpiresAt = DateTime.UtcNow.AddSeconds(tokens.GetProperty("expires_in").GetInt32()),
         };
     }
 

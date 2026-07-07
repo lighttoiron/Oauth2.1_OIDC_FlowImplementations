@@ -82,11 +82,13 @@ static class TokenEndpoint
 
         var (accessToken, idToken, expiresIn) = IssueTokens(options.Value, keys, authCodeData.Subject, authCodeData.Scope, authCodeData.ClientId);
 
-        var response = new Dictionary<string, object?>
+        var response = new Dictionary<string, object?>();
+        if (accessToken is not null)
         {
-            ["access_token"] = accessToken,
-            ["token_type"] = "Bearer",
-            ["expires_in"] = expiresIn
+            response["access_token"] = accessToken;
+            response["token_type"] = "Bearer";
+            response["expires_in"] = expiresIn;
+            response["scope"] = authCodeData.Scope;
         };
 
         if (idToken is not null)
@@ -146,7 +148,7 @@ static class TokenEndpoint
 
         if (clientId != refreshTokenData.ClientId)
         {
-            return Results.BadRequest(new { error = "invalid_grant", error_description =  "client_id mismatch." });
+            return Results.BadRequest(new { error = "invalid_grant", error_message =  "client_id mismatch." });
         }
 
         var usedToken = refreshTokenData with { Used = true };
@@ -187,7 +189,8 @@ static class TokenEndpoint
           ["access_token"] = accessToken,
           ["refresh_token"] = newRefreshToken,
           ["token_type"] = "Bearer",
-          ["expires_in"] = expiresIn  
+          ["expires_in"] = expiresIn,
+          ["scope"] = effectiveScope
         };
 
         if (idToken is not null)
@@ -198,39 +201,43 @@ static class TokenEndpoint
         return Results.Ok(response);
     }
 
-    private static (string accessToken, string? idToken, int expiresIn) IssueTokens(
+    private static (string? accessToken, string? idToken, int expiresIn) IssueTokens(
         AuthServerOptions config, ISigningKeyProvider keys, string subject, string scope, string clientId, string? nonce = null)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
         // Note: usually this would be handled in a secure key store like Azure Key Vault, not done in the server backend where we should never store the private key
         var signingCredentials = new SigningCredentials(keys.PrivateKey, SecurityAlgorithms.RsaSha256);
         var ApiAudience = config.ApiAudience;
+        var scopes = scope.Split(' ');
 
         var now = DateTime.UtcNow;
-        var accessTokenExpiry = now.AddMinutes(15); // Access token will be valid for 15 minutes
         var idTokenExpiry = now.AddMinutes(15); // ID token will be valid for 15 minutes
 
-
-        // --- Access token: the protected API will verify this on every request ---
-        // Contains who the user is (sub), what they are allowed to do (scope),
-        //  and who issued the token / who the token is for (iss, aud)
-        var accessTokenClaims = new List<Claim>
+        string? accessToken = null;
+        var accessTokenExpiry = now.AddMinutes(15); // Access token will be valid for 15 minutes
+        if (scopes.Contains("api.read"))
         {
-            new Claim(JwtRegisteredClaimNames.Sub, subject),
-            new Claim("scope", scope),
-            new Claim("client_id", clientId)
-        };
+            // --- Access token: the protected API will verify this on every request ---
+            // Contains who the user is (sub), what they are allowed to do (scope),
+            //  and who issued the token / who the token is for (iss, aud)
+            var accessTokenClaims = new List<Claim>
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, subject),
+                new Claim("scope", scope),
+                new Claim("client_id", clientId)
+            };
 
-        var accessToken = tokenHandler.CreateEncodedJwt(new SecurityTokenDescriptor
-        {
-            Issuer = config.Issuer,
-            Audience = ApiAudience, // token is for the API audience
-            Subject = new ClaimsIdentity(accessTokenClaims),
-            IssuedAt = now,
-            NotBefore = now,
-            Expires = accessTokenExpiry,
-            SigningCredentials = signingCredentials
-        });
+            accessToken = tokenHandler.CreateEncodedJwt(new SecurityTokenDescriptor
+            {
+                Issuer = config.Issuer,
+                Audience = ApiAudience, // token is for the API audience
+                Subject = new ClaimsIdentity(accessTokenClaims),
+                IssuedAt = now,
+                NotBefore = now,
+                Expires = accessTokenExpiry,
+                SigningCredentials = signingCredentials
+            });
+        }
 
         // --- ID token: proof of authentication, only used on the front end of the client, not passed to the API ---
         // aud here is the CLIENT aud value, not the API aud value since the client will consume this
