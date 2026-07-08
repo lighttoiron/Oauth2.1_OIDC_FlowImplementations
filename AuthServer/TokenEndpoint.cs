@@ -186,7 +186,7 @@ static class TokenEndpoint
 
         var response = new Dictionary<string, object>
         {
-          ["access_token"] = accessToken,
+          ["access_token"] = accessToken!,
           ["refresh_token"] = newRefreshToken,
           ["token_type"] = "Bearer",
           ["expires_in"] = expiresIn,

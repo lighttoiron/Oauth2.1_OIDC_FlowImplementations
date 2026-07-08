@@ -39,6 +39,24 @@ public class PendingRequestCleanupService : BackgroundService
                     AuthStore.RefreshTokens.TryRemove(kvp.Key, out _);
                 }
             }
+
+            foreach(var kvp in AuthStore.PendingConsentRequests)
+            {
+                if (kvp.Value.ExpiresAt < now)
+                {
+                    AuthStore.PendingConsentRequests.TryRemove(kvp.Key, out _);
+                }
+            }
+
+            foreach (var kvp in AuthStore.ActiveSessions)
+            {
+                if (kvp.Value.ExpiresAt < now)
+                {
+                    AuthStore.ActiveSessions.TryRemove(kvp.Key, out _);
+                }
+            }
+
+            // AuthStore.ConsentRecord is intentionally not cleared.  Our decision is to not automatically revoke user granted permissions after any amount of time.
         }
     }
 }
