@@ -17,7 +17,7 @@ class OidcFlowTab extends HTMLElement {
         this._onSessionReady = (e) => {
             const userInfo = this.shadowRoot.querySelector('user-info');
             if (userInfo) {
-                userInfo.subject = e.detail.subject;
+                userInfo.subjectInfo = e.detail;
             }
 
             if (this.getAttribute('login-type') === 'full') {

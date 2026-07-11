@@ -4,8 +4,10 @@ const baseSheets = await loadBaseSheets();
 const ownSheet = await loadSheet('/components/styles/user-info.css');
 
 class UserInfo extends HTMLElement {
-    set subject(value) {
-        this._subject = value;
+    set subjectInfo(value) {
+        this._subject = value.subject;
+        this._hasApiAccess = value.hasApiAccess;
+        this._hasRefreshToken = value.hasRefreshToken;
         this.render();
     }
 
@@ -27,7 +29,9 @@ class UserInfo extends HTMLElement {
         this.shadowRoot.innerHTML = `
             <div>
                 <span class="indicator"></span>
-                <span class="subject">Username: ${this._subject}</span>
+                <span class="subject">Username: ${this._subject} </span>
+                <span class="subject">API Access: ${this._hasApiAccess} </span>
+                <span class="subject">Refresh Token: ${this._hasRefreshToken}</span>
             </div>
         `;
     }

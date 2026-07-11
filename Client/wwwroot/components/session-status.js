@@ -56,7 +56,11 @@ class SessionStatus extends HTMLElement {
             this.dispatchEvent(new CustomEvent('session-ready', {
                 bubbles: true, // Lets objects other than this object receive this event
                 composed: true, // Lets listeners that exist outside this element's shadow DOM receive this event
-                detail: { subject: data.subject }
+                detail: {
+                    subject: data.subject,
+                    hasApiAccess: data.hasApiAccess,
+                    hasRefreshToken: data.hasRefreshToken
+                }
             }));
         } else {
             const signInElement = document.createElement('sign-in-options');
