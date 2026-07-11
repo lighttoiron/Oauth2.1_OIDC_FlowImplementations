@@ -79,5 +79,9 @@ AuthorizeEndpoint.Map(app);
 TokenEndpoint.Map(app);
 //
 
+// Add the /dumpeverything endpoint
+DumpEverythingEndpoint.Map(app, jsonOptions);
+//
+
 
 app.Run();

@@ -240,7 +240,24 @@ static class BffEndpoints
             return Results.Content(
                 await apiResponse.Content.ReadAsStringAsync(),
                 "application/json",
-                statusCode: (int)apiResponse.StatusCode);
+                statusCode: (int)apiResponse.StatusCode
+            );
+        });
+
+        app.MapGet("/bff/dumpeverything", async (
+            HttpContext context,
+            IOptions<BffOptions> options,
+            IHttpClientFactory httpFactory) =>
+        {
+            var http = httpFactory.CreateClient();
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{options.Value.AuthServerUrl}/dumpeverything");
+
+            var response = await http.SendAsync(request);
+            return Results.Content(
+                await response.Content.ReadAsStringAsync(),
+                "application/json",
+                statusCode: (int)response.StatusCode
+            );
         });
     }
 

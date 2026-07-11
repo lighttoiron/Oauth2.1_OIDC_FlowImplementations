@@ -34,6 +34,10 @@ class ApiCaller extends HTMLElement {
 
         this.shadowRoot.innerHTML = `
             <button class="btn-secondary" id="call-btn">Call Protected API</button>
+            <p class="description">
+                Note: If you signed in using the OIDC Login Flow tab the flow will not have included an access token for this API.
+                Clear cookies, refresh, and sign in through this tab to access the API.
+            </p>
             <pre id="api-call-result"></pre>
         `;
 

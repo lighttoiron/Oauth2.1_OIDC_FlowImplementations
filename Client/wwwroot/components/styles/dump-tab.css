@@ -36,3 +36,8 @@
     border-radius: var(--radius);
     text-align: center;
 }
+
+pre:empty::before {
+    content: 'Dumped info will appear here';
+    color: var(--color-text-ghost);
+}

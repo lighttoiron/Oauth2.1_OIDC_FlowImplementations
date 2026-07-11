@@ -1,6 +1,6 @@
 import "./tab-bar.js";
 import "./oidc-flow-tab.js";
-import "./oauth-api-tab.js";
+import "./dump-tab.js";
 import { loadBaseSheets } from './styles/loader.js';
 
 const baseSheets = await loadBaseSheets();
@@ -10,7 +10,7 @@ class AppShell extends HTMLElement {
         super();
         this.attachShadow({ mode: 'open' });
         this.shadowRoot.adoptedStyleSheets = [...baseSheets];
-        this._activeTab = 'oidc';
+        this._activeTab = 'combined';
     }
 
     connectedCallback() {
@@ -36,8 +36,8 @@ class AppShell extends HTMLElement {
             <div class="panel ${this._activeTab === 'oidc' ? 'active' : ''}">
                 <oidc-flow-tab login-type="identity"></oidc-flow-tab>
             </div>
-            <div class="panel ${this._activeTab === "oauth" ? 'active' : ''}">
-                <oauth-api-tab></oauth-api-tab>
+            <div class="panel ${this._activeTab === "dump" ? 'active' : ''}">
+                <dump-tab></dump-tab>
             </div>
         `;
     }

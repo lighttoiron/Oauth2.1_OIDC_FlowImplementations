@@ -37,11 +37,11 @@ class TabBar extends HTMLElement {
     }
 
     render() {
-        const activeTab = this.getAttribute('active') || 'oidc';
+        const activeTab = this.getAttribute('active') || 'combined';
         const tabs = [
             { id: 'combined', label: 'Login + API' },
-            { id: 'oidc', label: 'OIDC Login Flow' },
-            { id: 'oauth', label: 'OAuth2.0 API Access' }
+            { id: 'oidc', label: 'Pure OIDC Login Flow' },
+            { id: 'dump', label: 'Dump Server Info' }
         ];
 
         // Note: :host will access the style of the tab-bar tag itself, this is the proper way to style it from within the shadow root

@@ -32,3 +32,33 @@
     border-color: var(--color-accent);
     color: var(--color-text-primary);
 }
+
+.description {
+    font-family: var(--font-ui);
+    font-size: 13px;
+    color: var(--color-text-muted);
+    line-height: 1.6;
+    margin: 0 0 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.description strong {
+    color: var(--color-text-secondary);
+    font-weight: 500;
+}
+
+pre {
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 16px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    line-height: 1.6;
+    overflow-x: auto;
+    min-height: 48px;
+    white-space: pre-wrap;
+    margin-top: 16px;
+}
