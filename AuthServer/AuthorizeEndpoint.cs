@@ -233,7 +233,7 @@ static class AuthorizeEndpoint
                 var denyUrl = $"{pendingConsentRequest.RedirectUri}?"
                 + $"error=access_denied"
                 + $"&error_message={Uri.EscapeDataString("User denied access.")}"
-                + $"$state={Uri.EscapeDataString(pendingConsentRequest.State)}";
+                + $"&state={Uri.EscapeDataString(pendingConsentRequest.State)}";
 
                 return Results.Redirect(denyUrl);
             }
@@ -442,7 +442,7 @@ static class AuthorizeEndpoint
                         {{string.Join('\n', scopeItems)}}
                     </ul>
                     <button type="submit" name="decision" value="approve">Approve</button>
-                    <button type="submit" name="decision" valiue="deny">Deny</button>
+                    <button type="submit" name="decision" value="deny">Deny</button>
                 </form>
             </body>
             </html>

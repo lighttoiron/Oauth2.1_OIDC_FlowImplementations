@@ -1,0 +1,30 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "AuthServer",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/AuthServer/AuthServer.csproj"
+        },
+        {
+            "name": "ResourceApi",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/ResourceApi/ResourceApi.csproj"
+        },
+        {
+            "name": "Client",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/Client/Client.csproj"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "All Projects",
+            "configurations": ["AuthServer", "ResourceApi", "Client"],
+            "stopAll": true
+        }
+    ]
+}

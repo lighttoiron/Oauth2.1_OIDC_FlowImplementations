@@ -1,0 +1,26 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build-authserver",
+            "command": "dotnet",
+            "type": "process",
+            "args": ["build", "${workspaceFolder}/AuthServer/AuthServer.csproj"],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "build-resourceapi",
+            "command": "dotnet",
+            "type": "process",
+            "args": ["build", "${workspaceFolder}/ResourceApi/ResourceApi.csproj"],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "build-client",
+            "command": "dotnet",
+            "type": "process",
+            "args": ["build", "${workspaceFolder}/Client/Client.csproj"],
+            "problemMatcher": "$msCompile"
+        }
+    ]
+}
