@@ -17,9 +17,7 @@ class ApiCaller extends HTMLElement {
     }
 
     connectedCallback() {
-        if (this._sessionReady) {
-            this.render();
-        }
+        this.render();
     }
 
     disconnectedCallback() {
@@ -30,14 +28,15 @@ class ApiCaller extends HTMLElement {
     }
 
     render() {
-        if (!this._sessionReady) return;
-
         this.shadowRoot.innerHTML = `
+        <p class="description">
+            Note: If you signed in using the OIDC Login Flow tab the flow will not have included an access token for this API.
+            Clear cookies, refresh, and sign in through this tab to access the API.
+            </br>
+            User has active session with the Auth Server? <span class="subject" style="color:var(${this._sessionReady ? "--color-success" : "--color-error"})">${this._sessionReady ? "true" : "false"}</span>
+            </br>
             <button class="btn-secondary" id="call-btn">Call Protected API</button>
-            <p class="description">
-                Note: If you signed in using the OIDC Login Flow tab the flow will not have included an access token for this API.
-                Clear cookies, refresh, and sign in through this tab to access the API.
-            </p>
+        </p>
             <pre id="api-call-result"></pre>
         `;
 

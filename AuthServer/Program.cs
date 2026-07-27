@@ -83,5 +83,9 @@ TokenEndpoint.Map(app);
 DumpEverythingEndpoint.Map(app, jsonOptions);
 //
 
+// Add the /cleareverything endpoint
+ClearEverythingEndpoint.Map(app);
+//
+
 
 app.Run();

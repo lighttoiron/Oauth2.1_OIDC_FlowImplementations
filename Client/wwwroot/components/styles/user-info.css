@@ -10,9 +10,3 @@
     margin-right: 8px;
     display: inline-block;
 }
-
-.subject {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    color: var(--color-success);
-}

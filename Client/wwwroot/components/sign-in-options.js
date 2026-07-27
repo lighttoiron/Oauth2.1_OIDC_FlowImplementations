@@ -13,7 +13,7 @@ class SignInOptions extends HTMLElement {
 
     connectedCallback() {
         this.shadowRoot.innerHTML = `
-            <div class="actions" style="display:flex; gap:10px; flex-wrap:wrap;">
+            <div class="actions description" style="display:flex; gap:10px; flex-wrap:wrap;">
                 <a href="/bff/login?mode=${this.getAttribute('login-type') || 'full'}" class="btn btn-primary">Sign In (Redirect)</a>
                 <button id="popup-btn" class="btn btn-secondary">Sign In (Popup)</button>
             </div>

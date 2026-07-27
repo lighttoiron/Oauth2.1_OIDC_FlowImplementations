@@ -11,6 +11,8 @@ using Microsoft.IdentityModel.Tokens;
 
 static class AuthorizeEndpoint
 {
+    public static readonly string AuthenticatedSessionCookieName = "authenticated_session";
+
     static readonly HashSet<string> _supportedScopes = [
         "openid",
         "offline_access",
@@ -90,12 +92,24 @@ static class AuthorizeEndpoint
 
             // Check if the user has an active session with this authentication server
             AuthSession? authSession = null;
-            if (
-                context.Request.Cookies.TryGetValue("authenticated_session", out var sessionId)
-                && AuthStore.ActiveSessions.TryGetValue(sessionId, out var foundSession)
-                && foundSession.ExpiresAt > DateTime.UtcNow)
+            if (context.Request.Cookies.TryGetValue(AuthenticatedSessionCookieName, out var sessionId))
             {
-                authSession = foundSession;
+                if (AuthStore.ActiveSessions.TryGetValue(sessionId, out var foundSession)
+                    && foundSession.ExpiresAt > DateTime.UtcNow)
+                {
+                    authSession = foundSession;
+                }
+                else
+                {
+                    // If we have an authenticated_session cookie but no active session internally, delete the cookie
+                    context.Response.Cookies.Delete(AuthenticatedSessionCookieName);
+
+                    // If the session has expired, remove it from ActiveSessions
+                    if (!string.IsNullOrEmpty(sessionId))
+                    {
+                        AuthStore.ActiveSessions.TryRemove(sessionId, out _);
+                    }
+                }
             }
             
             if (authSession is null)
@@ -149,8 +163,10 @@ static class AuthorizeEndpoint
             var password = form["password"].ToString();
 
             // Verify that we have a pending request for the given requestId
-            if (!AuthStore.PendingRequests.TryRemove(requestId, out var pending))
+            if (!AuthStore.PendingRequests.TryGetValue(requestId, out var pending))
             {
+                context.Response.Cookies.Delete(AuthenticatedSessionCookieName);
+
                 return Results.BadRequest(new {
                     error = "invalid_grant",
                     error_message = "Unknown or expired login request - requestId not found."
@@ -169,8 +185,14 @@ static class AuthorizeEndpoint
             // Verify that the username matches a stored password for that username
             if (!AuthStore.Users.TryGetValue(username, out var expectedPassword) || password != expectedPassword)
             {
+                // If the username/password combo is incorrect, show the page again to allow sign in a second time
+                context.Response.Headers.CacheControl = "no-store";
+                context.Response.Headers.Pragma = "no-cache";
                 return Results.Content(BuildLoginHtml(requestId, pending.ClientId, pending.Scope, error: "Invalid username or password."), "text/html");
             }
+
+            // Valid sign in attempt, remove the pending request
+            AuthStore.PendingRequests.TryRemove(requestId, out _);
 
             // Credentials are valid, store a session for the user so future login is not needed
             var sessionId = GenerateOpaqueToken();
@@ -179,7 +201,7 @@ static class AuthorizeEndpoint
                 ExpiresAt: DateTime.UtcNow.AddHours(8)
             );
 
-            context.Response.Cookies.Append("authenticated_session", sessionId, new CookieOptions
+            context.Response.Cookies.Append(AuthenticatedSessionCookieName, sessionId, new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
@@ -387,6 +409,7 @@ static class AuthorizeEndpoint
                 </head>
                 <body>
                     <h2>Sign In</h2>
+                    {{errorHTML}}
                     <p>Client requesting access: <strong>{{clientId}}</strong></p>
                     <p>Scope: <strong>{{scope}}</strong></p>
                     <form method="post" action="/authorize">

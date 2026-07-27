@@ -5,6 +5,7 @@
 # Stop the script execution on error (barring any explicit overrides like in Wait-ForReady)
 $ErrorActionPreference = "Stop"
 
+# Waits until the given server responds, which we use to ensure that the Auth server is ready before we start the API server
 function Wait-ForReady {
     param($Name, $Url)
     $maxAttempts = 30
@@ -17,6 +18,7 @@ function Wait-ForReady {
                 -SkipCertificateCheck `
                 -TimeoutSec 2 `
                 -ErrorAction SilentlyContinue
+            # When we hear back from the server, return true
             if ($response.StatusCode -lt 500) {
                 Write-Host "$Name is ready."
                 return $true
@@ -35,6 +37,7 @@ function Wait-ForReady {
 # Track processes for cleanup
 $processes = @()
 
+# Used to shut down all of the servers when this script is stopped
 function Stop-AllProjects {
     Write-Host "`nShutting down all projects..."
     foreach ($p in $processes) {
@@ -88,6 +91,7 @@ $client = Start-Process "dotnet" `
     $processes += $client
 Write-Host "Client Starting (PID $(client.Id))..."
 
+# Wait for the client server to respond
 if (!(Wait-ForReady "Client" "https://localhost:7000")) {
     Stop-AllProjects
     exit 1

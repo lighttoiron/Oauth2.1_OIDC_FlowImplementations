@@ -27,7 +27,7 @@ class UserInfo extends HTMLElement {
         if (!this._subject) return;
 
         this.shadowRoot.innerHTML = `
-            <div>
+            <div class="description">
                 <span class="indicator"></span>
                 <span class="subject">Username: ${this._subject} </span>
                 <span class="subject">API Access: ${this._hasApiAccess} </span>

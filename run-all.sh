@@ -27,10 +27,12 @@ wait_for_ready() {
 
 # Cleans up any existing processes we've started
 cleanup () {
-    echo "\nShutting down all projects..."
+    echo ""
+    echo "Shutting down all projects..."
     kill $AUTH_PID $API_PID $CLIENT_PID 2>/dev/null
     wait $AUTH_PID $API_PID $CLIENT_PID 2>/dev/null
     echo "All projects stopped."
+    echo ""
 }
 # Run the cleanup function if this process receives an EXIT, INT, or TERM signal
 trap cleanup EXIT INT TERM
@@ -42,7 +44,7 @@ echo ""
 cd AuthServer
 # Run the https profile of the AuthServer project in the background
 dotnet run --launch-profile https &
-AUTH_PID=#!
+AUTH_PID=$!
 cd ..
 
 # Wait for the AuthServer to start responding so we know we are ready to run the API and Client servers

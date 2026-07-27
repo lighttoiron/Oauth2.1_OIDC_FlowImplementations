@@ -19,17 +19,24 @@ class DumpTab extends HTMLElement {
                 as well as all current session information, refresh tokens, consent, etc.
             </p>
             <button class="btn-secondary" id="dump-btn">Dump Auth Info</button>
+            <button class="btn-secondary" id="clear-btn">Clear All Info</button>
             <pre id="dump-info"></pre>
         `;
 
         this.shadowRoot.getElementById('dump-btn')
-            .addEventListener('click', this.callDumpEndpoint)
+            .addEventListener('click', this.callDumpEndpoint);
+        this.shadowRoot.getElementById('clear-btn')
+            .addEventListener('click', this.callClearEndpoint);
     }
 
     disconnectedCallback() {
         const dumpBtn = this.shadowRoot.getElementById('dump-btn');
+        const clearBtn = this.shadowRoot.getElementById('clear-btn');
         if (dumpBtn) {
-            dumpBtn.removeEventListener('click', this.callDumpEndpoint)
+            dumpBtn.removeEventListener('click', this.callDumpEndpoint);
+        }
+        if (clearBtn) {
+            clearBtn.removeEventListener('click', this.callClearEndpoint);
         }
     }
 
@@ -43,6 +50,11 @@ class DumpTab extends HTMLElement {
 
         const data = await response.json();
         pre.textContent = JSON.stringify(data, null, 2);
+    }
+
+    callClearEndpoint = async () => {
+        await fetch('/bff/cleareverything');
+        this.callDumpEndpoint();
     }
 }
 

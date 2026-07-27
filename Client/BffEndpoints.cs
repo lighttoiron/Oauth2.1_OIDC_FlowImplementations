@@ -92,7 +92,7 @@ static class BffEndpoints
             {
                 if (!loginAttempt.IsPopup)
                 {
-                    return success ? Results.Redirect("/") : Results.BadRequest(errorMessage);
+                    return success ? Results.Redirect("/") : Results.Redirect($"/?error={Uri.EscapeDataString(errorMessage ?? "login_failed")}");
                 }
 
                 var queryParams = success ? "" : $"?error={Uri.EscapeDataString(errorMessage ?? "login_failed")}";
@@ -251,13 +251,34 @@ static class BffEndpoints
         {
             var http = httpFactory.CreateClient();
             var request = new HttpRequestMessage(HttpMethod.Get, $"{options.Value.AuthServerUrl}/dumpeverything");
-
             var response = await http.SendAsync(request);
+
             return Results.Content(
                 await response.Content.ReadAsStringAsync(),
                 "application/json",
                 statusCode: (int)response.StatusCode
             );
+        });
+
+        app.MapGet("/bff/cleareverything", async (
+            HttpContext context,
+            IOptions<BffOptions> options,
+            IHttpClientFactory httpFactory) =>
+        {
+            // Clear all BFF internal storage
+            BffStore.LoginAttempts.Clear();
+            BffStore.Sessions.Clear();
+
+            // Clear all the Auth Server internal storage and cookies
+            var http = httpFactory.CreateClient();
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{options.Value.AuthServerUrl}/cleareverything");
+            var response = await http.SendAsync(request);
+
+            // Clear all the session cookies on the front end
+            context.Response.Cookies.Delete(SessionCookieName);
+            context.Response.Cookies.Delete(LoginAttemptCookieName);
+
+            return Results.Ok();
         });
     }
 
