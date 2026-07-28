@@ -1,35 +1,32 @@
-using System;
-using System.Collections.Generic;
-using System.Collections.Concurrent; // Thread-safe collections
-using System.Linq;
 using System.Security.Cryptography;
-using Microsoft.AspNetCore.Routing.Tree;
-using Microsoft.IdentityModel.Tokens;
 
-
-// Test this endpoint with the following string to pass the required info in the query params
-
+// The /authorize endpoint is the initial entry point when a user is trying to log in and grant delegated authority to the client
+// Also maps the /consent endpoint (which shares some logic with the /authorize endpoint) where users can grant delegated consent
 static class AuthorizeEndpoint
 {
     public static readonly string AuthenticatedSessionCookieName = "authenticated_session";
 
+    // A full list of all the supported scopes we allow
     static readonly HashSet<string> _supportedScopes = [
         "openid",
         "offline_access",
         "api.read"
     ];
 
+    // A list of scopes that are automatically granted, the user does not need to provide explicit permission for these scopes
     static readonly HashSet<string> _autoGrantedScopes =
     [
         "openid",
         "offline_access"
     ];
 
+    // Plain text descriptions of scopes, presented to the user when they are being asked to grant consent
     private static readonly Dictionary<string, (string Name, string Description)> _scopeDescriptions = new ()
     {
         ["api.read"] = ("api.read Access", "Allow {0} to access api.read on your behalf.")
     };
 
+    // Map all of the /authorize endpoints (e.g. MapGet, MapPost)
     public static void Map(WebApplication app)
     {
         // Set up the GET route
@@ -64,7 +61,8 @@ static class AuthorizeEndpoint
                 return Results.BadRequest(new { error = "invalid_request", error_message = "Missing redirect_uri." });
             }
 
-            if (string.IsNullOrEmpty(scope) || !ContainsAnySupportedScope(scope)) // Could contain other valid scope types as well, just need to ensure one scope to work with at least
+            // Could contain other valid scope types as well, just need to ensure one scope to work with at least
+            if (string.IsNullOrEmpty(scope) || !ContainsAnySupportedScope(scope))
             {
                 return Results.BadRequest(new { error = "invalid_request", error_message = $"Missing or invalid scope. Must include at least one of: {string.Join(' ', _supportedScopes)}" });
             }
@@ -94,6 +92,7 @@ static class AuthorizeEndpoint
             AuthSession? authSession = null;
             if (context.Request.Cookies.TryGetValue(AuthenticatedSessionCookieName, out var sessionId))
             {
+                // If the user has a session cookie, verify that we have an active session and that it hasn't expired yet
                 if (AuthStore.ActiveSessions.TryGetValue(sessionId, out var foundSession)
                     && foundSession.ExpiresAt > DateTime.UtcNow)
                 {
@@ -112,6 +111,7 @@ static class AuthorizeEndpoint
                 }
             }
             
+            // If the user has no active session, show the login page
             if (authSession is null)
             {
                 // Request is validated but login is required, store the user info as a pending request
@@ -122,7 +122,7 @@ static class AuthorizeEndpoint
                     State: state,
                     CodeChallenge: code_challenge,
                     Scope: cleanScope,
-                    Nonce: nonce ?? "", // Returns "" if nonce is null, since nonce is optional in the Authorization Code Flow but we still need to store its value in the ID token
+                    Nonce: nonce ?? "", // Use "" if nonce is null, since nonce is optional in the Authorization Code Flow but we still need to store its value in the ID token
                     ExpiresAt: DateTime.UtcNow.AddMinutes(5) // Say 5 minutes is enough time for a user to log in before needing to start over
                 );
 
@@ -131,7 +131,7 @@ static class AuthorizeEndpoint
                 return Results.Content(BuildLoginHtml(requestId, client_id, cleanScope), "text/html");
             }
 
-            // The user has a currently active session, no need to prompt for login
+            // The user has a currently active session, no need to prompt for login just allow them to grant consent
             return HandleConsent(
                 context, authSession!.Subject, client_id, redirect_uri,
                 cleanScope, requestedScopes, state, code_challenge, nonce ?? ""
@@ -142,7 +142,7 @@ static class AuthorizeEndpoint
         // Map the POST route for handling the form submission from GET
         app.MapPost("/authorize", async (HttpContext context) =>
         {
-            // 
+            // If we arrived here from somewhere other than a form post, it's a bad request
             if (!context.Request.HasFormContentType)
             {
                 return Results.BadRequest(new
@@ -162,7 +162,7 @@ static class AuthorizeEndpoint
             var username = form["username"].ToString();
             var password = form["password"].ToString();
 
-            // Verify that we have a pending request for the given requestId
+            // If we don't have a pending request with the given request ID, delete any session cookies and return bad request
             if (!AuthStore.PendingRequests.TryGetValue(requestId, out var pending))
             {
                 context.Response.Cookies.Delete(AuthenticatedSessionCookieName);
@@ -173,6 +173,7 @@ static class AuthorizeEndpoint
                 });
             }
 
+            // If the pending session has expired, it's a bad request
             if (pending.ExpiresAt < DateTime.UtcNow)
             {
                 return Results.BadRequest(new
@@ -186,12 +187,13 @@ static class AuthorizeEndpoint
             if (!AuthStore.Users.TryGetValue(username, out var expectedPassword) || password != expectedPassword)
             {
                 // If the username/password combo is incorrect, show the page again to allow sign in a second time
+                // Also displays a message to the user indicating that the username/password combo was incorrect
                 context.Response.Headers.CacheControl = "no-store";
                 context.Response.Headers.Pragma = "no-cache";
                 return Results.Content(BuildLoginHtml(requestId, pending.ClientId, pending.Scope, error: "Invalid username or password."), "text/html");
             }
 
-            // Valid sign in attempt, remove the pending request
+            // Valid sign in attempt, remove the pending request from our store
             AuthStore.PendingRequests.TryRemove(requestId, out _);
 
             // Credentials are valid, store a session for the user so future login is not needed
@@ -201,6 +203,7 @@ static class AuthorizeEndpoint
                 ExpiresAt: DateTime.UtcNow.AddHours(8)
             );
 
+            // Set the user session cookie to persist their session
             context.Response.Cookies.Append(AuthenticatedSessionCookieName, sessionId, new CookieOptions
             {
                 HttpOnly = true,
@@ -209,6 +212,7 @@ static class AuthorizeEndpoint
                 MaxAge = TimeSpan.FromHours(8)
             });
 
+            // Everything looks good, display the user consent page
             var requestedScopes = pending.Scope.Split(' ').ToHashSet();
             return HandleConsent(
                 context, username, pending.ClientId, pending.RedirectUri,
@@ -217,8 +221,10 @@ static class AuthorizeEndpoint
             );
         });
 
+        // Maps the /consent endpoint where users can grant consent for any delegated permissions being requested by the client
         app.MapPost("/consent", async (HttpContext context) =>
         {
+            // If this request did not come from a submitted form it is a bad request
             if (!context.Request.HasFormContentType)
             {
                 return Results.BadRequest(new
@@ -228,10 +234,12 @@ static class AuthorizeEndpoint
                 });
             }
 
+            // Read the needed information from the submitted form
             var form = await context.Request.ReadFormAsync();
             var consentRequestId = form["consentRequestId"].ToString();
             var decision = form["decision"].ToString();
 
+            // If we do not have a pending consent request for this user, it's a bad request
             if (!AuthStore.PendingConsentRequests.TryRemove(consentRequestId, out var pendingConsentRequest))
             {
                 return Results.BadRequest(new
@@ -241,6 +249,7 @@ static class AuthorizeEndpoint
                 });
             }
 
+            // If the consent request has expired, this is a bad request
             if (pendingConsentRequest.ExpiresAt < DateTime.UtcNow)
             {
                 return Results.BadRequest(new
@@ -250,6 +259,7 @@ static class AuthorizeEndpoint
                 });
             }
 
+            // If the user denied permission, redirect them back with an error message indicating that the user denied permissions
             if (decision == "deny")
             {
                 var denyUrl = $"{pendingConsentRequest.RedirectUri}?"
@@ -269,11 +279,13 @@ static class AuthorizeEndpoint
             var allGrantedScopes = userConsentedScopes;
             allGrantedScopes.UnionWith(pendingConsentRequest.RequestedScopes.Intersect(_autoGrantedScopes));
 
+            // Store the consented to permissions in our store with the format subject:clientId (which permissions has the user granted for which client)
             var consentKey = $"{pendingConsentRequest.Subject}:{pendingConsentRequest.ClientId}";
             AuthStore.ConsentRecords.AddOrUpdate(
                 consentKey,
                 new ConsentRecord(
-                    pendingConsentRequest.Subject, pendingConsentRequest.ClientId,
+                    pendingConsentRequest.Subject,
+                    pendingConsentRequest.ClientId,
                     allGrantedScopes,
                     DateTime.UtcNow),
                     (_, existing) => existing with
@@ -285,8 +297,9 @@ static class AuthorizeEndpoint
                     }
             );
     
-            
-            var grantedScope = string.Join(' ', allGrantedScopes); // Make sure to issue the auth code for ALL granted scopes, both implicitly and explicitly granted
+            // Make sure to issue the auth code for ALL granted scopes, both implicitly and explicitly granted
+            var grantedScope = string.Join(' ', allGrantedScopes);
+            // Issue the authorization code that /token can consume to provide access tokens
             return IssueCode(
                 pendingConsentRequest.ClientId, pendingConsentRequest.RedirectUri, grantedScope,
                 pendingConsentRequest.State, pendingConsentRequest.CodeChallenge,
@@ -295,6 +308,7 @@ static class AuthorizeEndpoint
         });
     }
 
+    // Returns the consent page the user needs to grant delegated permissions
     private static IResult HandleConsent(
         HttpContext context,
         string subject,
@@ -309,6 +323,7 @@ static class AuthorizeEndpoint
     {
         var consentKey = $"{subject}:{clientId}";
 
+        // Get a list of all scopes needing user consent
         var scopesNeedingConsent = requestedScopes // All requested scopes
             .Except(_autoGrantedScopes) // Except those that are automatically included for every call
             .Where( s =>
@@ -316,11 +331,13 @@ static class AuthorizeEndpoint
                 || !consentRecord.GrantedScopes.Contains(s)) // Or if a particular requested scope has not yet been granted
             .ToHashSet();
 
+        // If no scopes need consent, issue the auth code for the requested scopes
         if (!scopesNeedingConsent.Any())
         {
             return IssueCode(clientId, redirectUri, scope, state, codeChallenge, nonce, subject);
         }
 
+        // Add a pending consent request so we know which client scopes are being requested for the user when they grant or deny permission
         var consentRequestId = Guid.NewGuid().ToString();
         AuthStore.PendingConsentRequests[consentRequestId] = new PendingConsentRequest(
             Subject: subject,
@@ -337,7 +354,6 @@ static class AuthorizeEndpoint
 
         context.Response.Headers.CacheControl = "no-store";
         context.Response.Headers.Pragma = "no-cache";
-
         return Results.Content(BuildConsentHtml(consentRequestId, clientId, subject, scopesNeedingConsent), "text/html");
     }
 
@@ -353,6 +369,8 @@ static class AuthorizeEndpoint
         string subject
     )
     {
+        // This code is stored here in the server and is associated with the requested permissions
+        // When this code is presented to the /token endpoint, it will distribute the actual tokens requested
         var code = GenerateOpaqueToken();
         AuthStore.AuthCodes[code] = new AuthorizationCodeData(
             ClientId: clientId,
@@ -371,66 +389,71 @@ static class AuthorizeEndpoint
         return Results.Redirect(redirectUrl);
     }
 
+    // Generates a random opaque token, used to remember users in between calls from /authorize to /token
     private static string GenerateOpaqueToken()
     {
         return Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
             .Replace('+', '-').Replace('/', '_').TrimEnd('=');
     }
 
+    // True if the string contains at least one supported scope
+    // In this lab we choose to ignore any extraneous scopes requested
     private static bool ContainsAnySupportedScope(string scope)
     {
         string[] scopes = scope.Split(' ');
         return scopes.Intersect(_supportedScopes).Any();
     }
 
+    // Builds a simple login page that allows the user to sign in
     private static string BuildLoginHtml(string requestId, string clientId, string scope, string? error = null)
     {
+        // The error message to be shown if the user attempts to sign in with an invalid username/password
         var errorHTML = error is not null
             ? $"<p class=\"error\">{error}</p>"
             : "";
     
-            // Format the HTML page response here, returning a minimal HTML login form
-            // Note the hidden requestId field, this is how the POST handler will know which pending auth request to complete
-            // E.g. the user doesn't need to see it, but we need the form to post the requestID back to the server so we can look up the user info there in our pending requests
-            // The inserted Javascript in the header will force a page reload if the user gets a cached version of the page by clicking the back button
-            // This way if they ever access a cached version of the page via back (which will have an old requestId baked in) we manually refresh
-            string html = $$"""
-                <!DOCTYPE html>
-                <html lang="en">
-                <head>
-                    <title>Sign In</title>
-                    <script>
-                        window.addEventListener('pageshow', (event) => {
-                            if (event.persisted) {
-                                location.reload();
-                            }
-                        })
-                    </script>
-                </head>
-                <body>
-                    <h2>Sign In</h2>
-                    {{errorHTML}}
-                    <p>Client requesting access: <strong>{{clientId}}</strong></p>
-                    <p>Scope: <strong>{{scope}}</strong></p>
-                    <form method="post" action="/authorize">
-                        <input type="hidden" name="requestId" value="{{requestId}}" />
-                        <label>Username: <input type="text" name="username" value="user1"></input></label><br/>
-                        <label>Password: <input type="password" name="password" value="pass1"></input></label><br/>
-                        <button type="submit">Sign In</button>
-                    </form>
-                </body>
-                </html>
-            """;
+        // Format the HTML page response here, returning a minimal HTML login form
+        // Note the hidden requestId field, this is how the POST handler will know which pending auth request to complete
+        // The user doesn't need to see it but we need the form to post the requestID back to the server so we can look up the user info in our pending request store
+        // The inserted Javascript in the header will force a page reload if the user gets a cached version of the page by clicking the back button
+        // This way if they ever access a cached version of the page via back (which will have an old requestId baked in) we manually refresh
+        string html = $$"""
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <title>Sign In</title>
+                <script>
+                    window.addEventListener('pageshow', (event) => {
+                        if (event.persisted) {
+                            location.reload();
+                        }
+                    })
+                </script>
+            </head>
+            <body>
+                <h2>Sign In</h2>
+                {{errorHTML}}
+                <p>Client requesting access: <strong>{{clientId}}</strong></p>
+                <p>Scope: <strong>{{scope}}</strong></p>
+                <form method="post" action="/authorize">
+                    <input type="hidden" name="requestId" value="{{requestId}}" />
+                    <label>Username: <input type="text" name="username" value="user1"></input></label><br/>
+                    <label>Password: <input type="password" name="password" value="pass1"></input></label><br/>
+                    <button type="submit">Sign In</button>
+                </form>
+            </body>
+            </html>
+        """;
 
-            return html;
+        return html;
     }
 
+    // Builds the consent page that allows users to grant delegated permission to the client
     private static string BuildConsentHtml(
         string consentRequestId,
         string clientId,
         string subject,
-        HashSet<string> scopesNeedingConsent
-    )
+        HashSet<string> scopesNeedingConsent)
     {
         var scopeItems = scopesNeedingConsent
             .Select(s =>
