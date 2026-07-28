@@ -1,3 +1,4 @@
+// Information needed to respond to a user granting or denying delegated permission for a client
 record PendingConsentRequest(
     string Subject,
     string ClientId,

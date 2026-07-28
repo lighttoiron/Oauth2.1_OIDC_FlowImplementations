@@ -1,7 +1,7 @@
-using System;
 using System.Security.Cryptography;
 using Microsoft.IdentityModel.Tokens;
 
+// All ISigningKeyProviders must have a private and public key
 public interface ISigningKeyProvider
 {
     RsaSecurityKey PrivateKey { get; }
@@ -23,7 +23,7 @@ public class InMemorySigningKeyProvider : ISigningKeyProvider
         // In production this would be loaded from secure storage, not generated here (Azure Key Vault, AWS KMS, etc.)
         // that way the private key is never exposed in source or config files and survives across restarts, shared across instances, etc.
         string rsaKeyId = "lab-key-1"; // In production this would be a stable value that does not change across restarts or deployments.  Could be a GUID, a hash of the public key, or any other unique identifier.
-        var rsa = RSA.Create(2048); // 2048 is web standard length for RSA keys in bits.  1024 is not secure enough, 4096 is overkill and slower, but maybe for super security ok?
+        var rsa = RSA.Create(2048); // 2048 is web standard length for RSA keys in bits.  1024 is not secure enough, 4096 is overkill and slower, but may be used for advanced security.
         // Note: The above RSA object holds both the private and public key parameters.
         //  To get the private key, we need to wrap those params with the RsaSecurityKey class, passing our keyId
         //  To get the public key, we need to export only the public parameters, then wrap those with the RsaSecurityKey class, passing the same keyId.

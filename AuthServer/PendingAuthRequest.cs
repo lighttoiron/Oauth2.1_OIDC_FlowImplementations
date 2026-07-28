@@ -1,4 +1,4 @@
-// A simple record containing auth request info, for holding onto that info while we process
+// A simple record containing auth request info, for holding onto that info while we process incoming requests
 record PendingAuthRequest(
     string ClientId,
     string RedirectUri,

@@ -1,7 +1,7 @@
-using System;
 using Microsoft.IdentityModel.Tokens;
 using System.Text.Json;
 
+// JWKS (or JSON Web Key Set) is a part of OIDC, and exposes public keys for this server
 static class JWKSEndpoint
 {
     public static void Map(WebApplication app, JsonSerializerOptions jsonOptions)
@@ -15,7 +15,7 @@ static class JWKSEndpoint
 
             return Results.Json(new { keys = new[] { jwk } }, jsonOptions);
         });
-        // NOTE: tje JSON object returned has these fields:
+        // NOTE: the JSON object returned has these fields:
         // kty: "RSA" - key type
         // use: "sig" - this key is for signing, not encryption
         // kid: "lab-key-1" - this is the key id, used by the API to look up which key to use to verify when a token arrives (tokens will have a matching kid in their header)

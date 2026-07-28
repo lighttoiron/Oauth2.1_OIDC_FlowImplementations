@@ -1,4 +1,3 @@
-using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
@@ -16,12 +15,13 @@ static class TokenEndpoint
             ISigningKeyProvider keys,
             IOptions<AuthServerOptions> options ) =>
         {
+            // Any request not from a submitted form post is a bad requets
             if (!context.Request.HasFormContentType)
             {
                 return Results.BadRequest(new { error = "invalid_request", error_message = "Expected form-encoded body." });
             }
 
-            // read the content of the form we received
+            // Read the content of the form we received
             var form = await context.Request.ReadFormAsync();
             
             // Extract the information we need to validate the request from the form
@@ -36,13 +36,16 @@ static class TokenEndpoint
         });
     }
 
+    // Handles the Authorization Code grant requests by exchanging a provided auth code for the requested tokens
     private static IResult HandleAuthorizationCodeGrant(IFormCollection form, ISigningKeyProvider keys, IOptions<AuthServerOptions> options)
     {
+        // Get the necessary information from the provided form
         var code = form["code"].ToString();
         var redirectUri = form["redirect_uri"].ToString();
         var clientId = form["client_id"].ToString();
         var codeVerifier = form["code_verifier"].ToString();
 
+        // Validate the information we got from the provided form
         if (string.IsNullOrEmpty(code) || string.IsNullOrEmpty(codeVerifier))
         {
             return Results.BadRequest(new { error = "invalid_request", error_message = "Missing Code or Code Verifier in the request." });
@@ -69,7 +72,7 @@ static class TokenEndpoint
         // PKCE verification, make sure that the client is the same one who initially requested the auth code from /authorize
         // Hash the code_verifier the client sent us and compare to the code_challenge sent to the /authorize endpoint
         // Hash the provided code verifier
-        var verifierHash = System.Security.Cryptography.SHA256.HashData(
+        var verifierHash = SHA256.HashData(
             System.Text.Encoding.ASCII.GetBytes(codeVerifier));
         // Convert to base64 string for comparison.  This string cleanup should match how the client generates their code_challenge
         var computedChallenge = Convert.ToBase64String(verifierHash)
@@ -80,6 +83,7 @@ static class TokenEndpoint
             return Results.BadRequest(new { error = "invalid_grant", error_message="PKCE verification failed.  The computed hash did not match the code_challenge provided to /authorize." });
         }
 
+        // Get the requested tokens since we have verified the incoming request
         var (accessToken, idToken, expiresIn) = IssueTokens(options.Value, keys, authCodeData.Subject, authCodeData.Scope, authCodeData.ClientId);
 
         var response = new Dictionary<string, object?>();
@@ -117,12 +121,15 @@ static class TokenEndpoint
         return Results.Ok(response);
     }
 
+    // Handles the Refresh Token grant, providing a new refresh token and access tokens if the user submits a valid refresh token
     private static IResult HandleRefreshTokenGrant(IFormCollection form, ISigningKeyProvider keys, IOptions<AuthServerOptions> options)
     {
+        // Get the necessary information from the provided form
         var refreshTokenValue = form["refresh_token"].ToString();
         var clientId = form["client_id"].ToString();
         var requestedScope = form["scope"].ToString();
 
+        // Validate the information we received from the provided form
         if (string.IsNullOrEmpty(refreshTokenValue))
         {
             return Results.BadRequest(new { error = "invalid_request", error_message = "refresh_token missing or empty." });
@@ -135,7 +142,7 @@ static class TokenEndpoint
 
         if (refreshTokenData.Used)
         {
-            // This token was already used, assume attacker stole this token and invalidate this token family
+            // This token was already used, assume an attacker stole this token and invalidate this token family
             RevokeFamily(refreshTokenData.FamilyId);
             return Results.BadRequest(new { error = "invalid_grant", error_message = "Refresh token reuse detected - session revoked." });
         }
@@ -151,6 +158,7 @@ static class TokenEndpoint
             return Results.BadRequest(new { error = "invalid_grant", error_message =  "client_id mismatch." });
         }
 
+        // Request has been validated, 
         var usedToken = refreshTokenData with { Used = true };
         // We use TryUpdate here to ensure that our refreshTokenData still remains in the dictionary unchanged
         // If this fails, it means another request already redeemed this token (or, in rare cases, the token expired and was cleaned up automatically)
@@ -161,6 +169,7 @@ static class TokenEndpoint
             return Results.BadRequest(new { error = "invalid_grant", error_message = "Refresh token reuse or expiry detected - session revoked." });
         }
 
+        // Set up the scopes for the new tokens
         var effectiveScope = refreshTokenData.Scope;
         if (!string.IsNullOrWhiteSpace(requestedScope))
         {
@@ -172,9 +181,11 @@ static class TokenEndpoint
             }
         }
 
+        // Generate the tokens to issue
         var (accessToken, idToken, expiresIn) = IssueTokens(
             options.Value, keys, refreshTokenData.Subject, effectiveScope, refreshTokenData.ClientId);
         
+        // Generate the new refresh token and store it internally
         var newRefreshToken = GenerateOpaqueToken();
         AuthStore.RefreshTokens[newRefreshToken] = new RefreshTokenData(
             ClientId: refreshTokenData.ClientId,
@@ -184,6 +195,7 @@ static class TokenEndpoint
             ExpiresAt: refreshTokenData.ExpiresAt
         );
 
+        // Send the tokens to the user
         var response = new Dictionary<string, object>
         {
           ["access_token"] = accessToken!,
@@ -201,18 +213,20 @@ static class TokenEndpoint
         return Results.Ok(response);
     }
 
+    // Generates and returns all requested tokens (id and access tokens)
     private static (string? accessToken, string? idToken, int expiresIn) IssueTokens(
         AuthServerOptions config, ISigningKeyProvider keys, string subject, string scope, string clientId, string? nonce = null)
     {
+        // Get the information needed to create and sign the requested tokens
         var tokenHandler = new JwtSecurityTokenHandler();
         // Note: usually this would be handled in a secure key store like Azure Key Vault, not done in the server backend where we should never store the private key
         var signingCredentials = new SigningCredentials(keys.PrivateKey, SecurityAlgorithms.RsaSha256);
         var ApiAudience = config.ApiAudience;
         var scopes = scope.Split(' ');
-
         var now = DateTime.UtcNow;
         var idTokenExpiry = now.AddMinutes(15); // ID token will be valid for 15 minutes
 
+        // Generate the access token if requested
         string? accessToken = null;
         var accessTokenExpiry = now.AddMinutes(15); // Access token will be valid for 15 minutes
         if (scopes.Contains("api.read"))
@@ -270,6 +284,7 @@ static class TokenEndpoint
         return (accessToken, idToken, (int)(accessTokenExpiry - now).TotalSeconds);
     }
 
+    // Revokes an entire family of refresh tokens.  Any tokens with the given familyId will no longer be valid.
     private static void RevokeFamily(string familyId)
     {
         foreach(var kvp in AuthStore.RefreshTokens)
@@ -281,6 +296,7 @@ static class TokenEndpoint
         }
     }
 
+    // Generates a random opaque token, sent to the client and used to look up information here in the auth server.
     private static string GenerateOpaqueToken()
     {
         return Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))

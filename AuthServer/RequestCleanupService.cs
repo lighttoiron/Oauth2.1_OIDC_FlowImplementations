@@ -1,10 +1,9 @@
-using System;
-
-public class PendingRequestCleanupService : BackgroundService
+public class RequestCleanupService : BackgroundService
 {
+    // The time interval in between cleanup sweeps
     private static readonly TimeSpan SweepInterval = TimeSpan.FromMinutes(1);
 
-    // This function is called automatically by the app since it was added to hosted services in Program.cs
+    // This function is called automatically by the app since it is added to hosted services in Program.cs
     // This stoppingToken is passed in automatically by the app when it runs and gets signalled when the app shuts down, cleanly exiting the loop.
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
