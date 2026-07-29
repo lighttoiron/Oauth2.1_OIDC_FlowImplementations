@@ -1,9 +1,9 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 
-
-// TODO: get new keys from discovery / JWKS if JWKS is reset.  Need to add logic to do this
-
+// Note: This server relies on a running AuthServer in order to get the appropriate public keys for token validation
+// If the AuthServer is not running an accessible, this server will be unable to set itself up.  Additionally if the AuthServer
+// is restarted this server will need to be restarted as well.
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,7 +15,7 @@ builder.Services.AddHttpLogging(logging =>
 //
 
 // Add CORS to allow our client app to call this endpoint
-// Note that a SPA operating with a BFF architecture does not call this endpoint directly and does not need to allow CORS requests
+// Note that a SPA operating with a BFF architecture does not call this endpoint directly from the page and does not need to allow CORS requests
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("ClientApp", policy =>
@@ -30,6 +30,7 @@ builder.Services.AddCors(options =>
 // ! here indicates to the compiler that we guarantee this value isn't null, so don't show warnings
 var apiOptions = builder.Configuration.GetSection("ResourceApi").Get<ResourceApiOptions>()!;
 
+// Add Jwt Bearer authentication to this server, requiring valid JWTs to access our endpoints
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -80,18 +81,16 @@ app.UseCors("ClientApp");
 // NOTE:: IMPORTANT: app.UseAuthentication() must be called BEFORE app.UseAuthorization() or auth requests will fail.
 // This is because the middleware pipeline is an ordered chain, and all app.Use...() calls will be effectuated in order
 // Each element of the chain gets a chance to inspect and then accept or reject the call in the order they were set up
-// 
+//
 // Looks at the incoming request, reads the Authorization header (in our case, since we set up AddJwtBearer as our default
-// authentication handler), validates the JWT, then populates HttpContext.USer with a ClaimsPrinciple built from the token's claiims
+// authentication handler), validates the JWT, then populates HttpContext.User with a ClaimsPrinciple built from the token's claims
 app.UseAuthentication();
 // Looks at HttpContext.User and decides (based on policies like .RequireAuthorization) whether the user provided is permitted
 //  to access the requested endpoint
 app.UseAuthorization();
 
-
-
+// A simple unprotected test endpoint if you want to see this server running and serving content
 app.MapGet("/", () => "Hello World!");
-
 
 // Note: .RequireAuthorization() protects this endpoint.  Middleware will intercept all calls to this endpoint,
 //  extract their Authorization: Bearer <token bits> header, and run a full validation check (signature, issuer, audience, expiry)

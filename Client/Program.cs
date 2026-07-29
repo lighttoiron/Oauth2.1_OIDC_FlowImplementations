@@ -1,5 +1,6 @@
 var builder = WebApplication.CreateBuilder(args);
 
+// Set up the BffOptions, add an HttpClient for making calls, and register the cleanup service
 builder.Services.Configure<BffOptions>(builder.Configuration.GetSection("Bff"));
 builder.Services.AddHttpClient();
 builder.Services.AddHostedService<BffCleanupService>();
@@ -21,8 +22,11 @@ app.UseDefaultFiles();
 // Serves any file in wwwroot
 // Basically, this allows any file in wwwroot to be served if specifically requested (e.g. https://localhost:7000/index.html will be served if called directly)
 app.UseStaticFiles();
+
+// Enable HttpLogging for debugging
 app.UseHttpLogging();
 
+// Map all of the endpoints
 BffEndpoints.Map(app);
 
 app.Run();

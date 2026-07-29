@@ -1,3 +1,4 @@
+// The Cleanup Service that will removed expired session and login attempts
 public class BffCleanupService : BackgroundService
 {
     private static readonly TimeSpan SweepInterval = TimeSpan.FromMinutes(1);

@@ -1,3 +1,4 @@
+// A Collection of options needed by the server to handle incomming calls
 public class BffOptions
 {
     public string AuthServerUrl { get; set; } = "";

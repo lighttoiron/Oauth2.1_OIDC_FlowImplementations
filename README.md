@@ -131,6 +131,8 @@ This tab allows easy access to the internal storage on the Auth Server, allowing
 
 You can also use the Clear All Info button to clear all the stores (except registered Username/Password combinations) on the BFF server and the Auth server, effectively signing out all accounts.
 
+The Expire Current Session button can be used to test the refresh token grant.  It will expire but not delete the user's current session, running through the refresh token grant the next time the protected API is called.
+
 ### Cookies And Resetting
 
 In a typical login and access token flow, cookies are uesd to store user session information.  For this lab, actual user information (like ID and access tokens) is never stored in cookies, but opaque session cookies are uesd to look up that user information in the Auth Server and BFF server.

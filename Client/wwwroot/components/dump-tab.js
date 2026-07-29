@@ -21,6 +21,7 @@ class DumpTab extends HTMLElement {
             </p>
             <button class="btn-secondary" id="dump-btn">Dump Auth Info</button>
             <button class="btn-secondary" id="clear-btn">Clear All Info</button>
+            <button class="btn-secondary" id="expire-btn">Expire Current Session</button>
             <pre id="dump-info"></pre>
         `;
 
@@ -28,19 +29,26 @@ class DumpTab extends HTMLElement {
             .addEventListener('click', this.callDumpEndpoint);
         this.shadowRoot.getElementById('clear-btn')
             .addEventListener('click', this.callClearEndpoint);
+        this.shadowRoot.getElementById('expire-btn')
+            .addEventListener('click', this.callExpireEndpoint);
     }
 
     disconnectedCallback() {
         const dumpBtn = this.shadowRoot.getElementById('dump-btn');
         const clearBtn = this.shadowRoot.getElementById('clear-btn');
+        const expireBtn = this.shadowRoot.getElementById('expire-btn');
         if (dumpBtn) {
             dumpBtn.removeEventListener('click', this.callDumpEndpoint);
         }
         if (clearBtn) {
             clearBtn.removeEventListener('click', this.callClearEndpoint);
         }
+        if (expireBtn) {
+            expireBtn.removeEventListener('click', this.callExpireEndpoint);
+        }
     }
 
+    // Calls the /dumpeverything endpoint and shows the results in the 'dump-info' pre element.
     callDumpEndpoint = async () => {
         const response = await fetch('/bff/dumpeverything');
         const pre = this.shadowRoot.getElementById('dump-info');
@@ -55,6 +63,11 @@ class DumpTab extends HTMLElement {
 
     callClearEndpoint = async () => {
         await fetch('/bff/cleareverything');
+        this.callDumpEndpoint();
+    }
+
+    callExpireEndpoint = async () => {
+        await fetch('/bff/expiresession');
         this.callDumpEndpoint();
     }
 }
