@@ -7,7 +7,7 @@ const stylesCache = new Map();
 export async function loadSheet(path) {
     if (!stylesCache.has(path)) {
         stylesCache.set(path, fetch(path)
-            .then(r => r.text())
+            .then(response => response.text())
             .then(css => {
                 const sheet = new CSSStyleSheet();
                 sheet.replaceSync(css);

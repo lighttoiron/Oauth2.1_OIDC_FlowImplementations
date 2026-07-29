@@ -3,6 +3,7 @@ import { loadBaseSheets, loadSheet } from './styles/loader.js';
 const baseSheets = await loadBaseSheets();
 const ownSheet = await loadSheet('/components/styles/tab-bar.css');
 
+// The tab-bar component shows the user their options in a tab bar near the top of the page
 class TabBar extends HTMLElement {
     // observedAttributes is a predefined part of Web Components, forming a pair with attributeChangedCallback to allow listening to these attributes
     static get observedAttributes() {
@@ -44,7 +45,6 @@ class TabBar extends HTMLElement {
             { id: 'dump', label: 'Dump Server Info' }
         ];
 
-        // Note: :host will access the style of the tab-bar tag itself, this is the proper way to style it from within the shadow root
         this.shadowRoot.innerHTML = `
             <nav>${tabs.map(tab => `
                     <button data-tab="${tab.id}" class="${tab.id === activeTab ? 'active' : ''}">

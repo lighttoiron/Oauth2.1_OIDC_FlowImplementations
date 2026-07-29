@@ -9,6 +9,9 @@
         const params = new URLSearchParams(window.location.href);
         const error = params.get('error');
 
+        // BroadcastChannels are better than window.opener.postMessage because Cross-Origin-Opener-Policy headers sever the window.opener reference
+        // i.e. window.opener is removed if the popup window navigates to another site with Cross-Origin-Opener-Policy: same-origin
+        // BroadcastChannels are available to any page on the same origin listening to the channel regardless of window.opener, so we use it here.
         const channel = new BroadcastChannel('bff_login');
         channel.postMessage({
             success: !error,

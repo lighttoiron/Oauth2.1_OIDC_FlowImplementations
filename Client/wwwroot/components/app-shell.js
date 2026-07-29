@@ -1,3 +1,6 @@
+// We should import these JS files to ensure they are parsed before this file (since we use them as a part of this component)
+// For our app, since the user has to interact before they would be rendered, we wouldn't really need this, but it is good practice
+// And allows us to not include a script tag in our page HTML for any component not explicitly loaded there
 import "./tab-bar.js";
 import "./oidc-flow-tab.js";
 import "./dump-tab.js";
@@ -5,6 +8,7 @@ import { loadBaseSheets } from './styles/loader.js';
 
 const baseSheets = await loadBaseSheets();
 
+// The app-shell is our wrapper class that lays out our web components
 class AppShell extends HTMLElement {
     constructor() {
         super();

@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <!-- Note: type="module" elements are automatically deferred and loaded after the document is parsed, no need to wait for DOMContentLoaded-->
-     <!--Note: type="module" also gives each file its own scope, so globally declared variables in those files are not leaked into other files or into window-->
+    <!-- Note: type="module" also gives each file its own scope, so globally declared variables in those files are not leaked into other files or into window-->
     <script type="module" src="/components/app-shell.js"></script>
     <style>
         *, *::before, *::after {
@@ -72,6 +72,7 @@
         </div>
     </header>
     <main>
+        <!-- Note: This is the AppShell Web Component that we define in components/app-shell.js, which is loaded by the script tag above -->
         <app-shell></app-shell>
     </main>
 </body>

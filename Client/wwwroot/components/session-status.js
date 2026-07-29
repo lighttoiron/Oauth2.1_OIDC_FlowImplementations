@@ -1,20 +1,21 @@
-// We should import these JS files to ensure they are parsed before this file (since we use them as a part of this component)
-// For our app, since the user has to interact before they would be rendered, we wouldn't really need this, but it is good practice
-// And allows us to not include a script tag in our page HTML for any component not explicitly loaded there
 import './sign-in-options.js';
 import { loadBaseSheets, loadSheet } from './styles/loader.js';
 
 const baseSheets = await loadBaseSheets();
 const ownSheet = await loadSheet('/components/styles/session-status.css');
 
-// The Session Status element checks our current session status, then displays to the user the result of our sign in attempt
-// If the user is signed in, offer a call to the protected API
-// If the user is not signed in, offer sign in options
+// The session-status element checks our current session status, then displays to the user the result of our sign in attempt
 class SessionStatus extends HTMLElement {
+    // observedAttributes is a defined static getter that tells the browser which attribute changes should lead to calling attributeChangedCallback
+    // Registering 'mode' here ensures that whenever 'mode' is changed, we can check the user's session status and render appropriately
     static get observedAttributes() { return ['mode']; };
 
+    // Called whenever an observedAttribute is changed
+    // Can be populated with parameters, i.e. attributeChangedCallback(name, oldValue, newValue) - values can be null
     attributeChangedCallback() {
         // If we are connected to the document, re-render whenever the mode attribute changes
+        // We need to check this.isConnected because attributeChangedCallback can be called before the shadow DOM is set up
+        // this.shadowRoot also does not ensure that the element has been added to the live DOM, but this.isConnected ensures we are set up and on the page
         if (this.isConnected) this.checkSession();
     }
 
@@ -50,8 +51,10 @@ class SessionStatus extends HTMLElement {
         const response = await fetch('/bff/me');
         const data = await response.json();
 
+        // Clear the innerHTML so we can either disappear or offer sign in buttons
         this.shadowRoot.innerHTML = '';
 
+        // If the user is signed in, dispatch the session-ready event, otherwise offer sign in buttons
         if (data.authenticated) {
             this.dispatchEvent(new CustomEvent('session-ready', {
                 bubbles: true, // Lets objects other than this object receive this event

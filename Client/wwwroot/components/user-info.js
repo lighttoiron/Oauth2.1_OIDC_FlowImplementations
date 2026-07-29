@@ -3,7 +3,9 @@ import { loadBaseSheets, loadSheet } from './styles/loader.js';
 const baseSheets = await loadBaseSheets();
 const ownSheet = await loadSheet('/components/styles/user-info.css');
 
+// The user-info element displays some general user info, like their sign in status, if they have a refresh token, etc.
 class UserInfo extends HTMLElement {
+    // Create a subjectInfo setter, allowing other JS scripts to populate the displayed information
     set subjectInfo(value) {
         this._subject = value.subject;
         this._hasApiAccess = value.hasApiAccess;

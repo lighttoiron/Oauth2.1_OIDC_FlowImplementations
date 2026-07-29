@@ -3,6 +3,7 @@ import { loadBaseSheets, loadSheet } from './styles/loader.js';
 const baseSheets = await loadBaseSheets();
 const ownSheet = await loadSheet('/components/styles/dump-tab.css');
 
+// The dump-tab is a tab that allows the user to dump all server info or clear all server info, used for easy debugging and readability
 class DumpTab extends HTMLElement {
     constructor() {
         super();

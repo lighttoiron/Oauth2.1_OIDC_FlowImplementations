@@ -6,6 +6,8 @@ import { loadBaseSheets, loadSheet } from './styles/loader.js';
 const baseSheets = await loadBaseSheets();
 const ownSheet = await loadSheet('/components/styles/oidc-flow-tab.css');
 
+// The oidc-flow-tab is our component that allows the user to sign in and request access tokens
+// It is a wrapper that contains user sessions status, sign in buttons, and the API call button
 class OidcFlowTab extends HTMLElement {
     constructor() {
         super();
@@ -14,21 +16,7 @@ class OidcFlowTab extends HTMLElement {
     }
 
     connectedCallback() {
-        this._onSessionReady = (e) => {
-            const userInfo = this.shadowRoot.querySelector('user-info');
-            if (userInfo) {
-                userInfo.subjectInfo = e.detail;
-            }
-
-            if (this.getAttribute('login-type') === 'full') {
-                const apiCaller = this.shadowRoot.querySelector('api-caller');
-                if (apiCaller) {
-                    apiCaller.sessionReady = true;
-                }
-            }
-        }
-
-        this.addEventListener('session-ready', this._onSessionReady);
+        this.addEventListener('session-ready', this.onSessionReady);
 
         this.shadowRoot.innerHTML = `
             <p class="flow-label">Authorization Code + PKCE with BFF SPA Architecture</p>
@@ -44,7 +32,21 @@ class OidcFlowTab extends HTMLElement {
     }
 
     disconnectedCallback() {
-        this.removeEventListener('session-ready', this._onSessionReady);
+        this.removeEventListener('session-ready', this.onSessionReady);
+    }
+
+    onSessionReady = (e) => {
+        const userInfo = this.shadowRoot.querySelector('user-info');
+        if (userInfo) {
+            userInfo.subjectInfo = e.detail;
+        }
+
+        if (this.getAttribute('login-type') === 'full') {
+            const apiCaller = this.shadowRoot.querySelector('api-caller');
+            if (apiCaller) {
+                apiCaller.sessionReady = true;
+            }
+        }
     }
 }
 
