@@ -223,8 +223,6 @@ static class BffEndpoints
 
             if (session.AccessToken is null || session.AccessTokenExpiresAt is null)
             {
-                
-                context.Response.Cookies.Delete(SessionCookieName);
                 return Results.Unauthorized();
             }
 
@@ -232,7 +230,7 @@ static class BffEndpoints
             {
                 // Attempt to refreshthe session using a refresh token
                 var refreshedSession = await RefreshSession(session, options.Value, httpFactory);
-                // If we could not refresh, request is unauthorized
+                // If we could not refresh, request is unauthorized and our session is expired
                 if (refreshedSession is null)
                 {
                     context.Response.Cookies.Delete(SessionCookieName);

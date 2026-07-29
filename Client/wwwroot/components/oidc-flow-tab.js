@@ -41,11 +41,9 @@ class OidcFlowTab extends HTMLElement {
             userInfo.subjectInfo = e.detail;
         }
 
-        if (this.getAttribute('login-type') === 'full') {
-            const apiCaller = this.shadowRoot.querySelector('api-caller');
-            if (apiCaller) {
-                apiCaller.sessionReady = true;
-            }
+        const apiCaller = this.shadowRoot.querySelector('api-caller');
+        if (apiCaller) {
+            apiCaller.sessionReady = true;
         }
     }
 }
