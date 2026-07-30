@@ -77,10 +77,9 @@ I've also provided scripts for running this project on either Windows or Mac.
 For Windows:
 
 1. Open a powershell window in the root folder (oauth-lab)
-2. Run the following commands: (Set-ExecutionPolicy is used for a one-time permissions setup)
+2. Run the following commands: (ExecutionPolicy is used to allow a one time running of an unsigned script)
 ````code
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-.\run-all.ps1
+powershell -ExecutionPolicy Bypass -File .\start-all.ps1
 ````
 
 For Mac:
